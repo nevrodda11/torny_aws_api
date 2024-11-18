@@ -32,10 +32,10 @@ exports.createTeamHandler = async (event, context) => {
         validateEnvVars();
         
         connection = await mysql.createConnection(connectionConfig);
+        await connection.beginTransaction();
         console.log('MySQL connection successful');
 
-        const { team_name, sport_id } = JSON.parse(event.body);
-        const created_by_user_id = event.requestContext.authorizer.claims.sub;
+        const { team_name, sport_id, team_members = [], created_by_user_id } = JSON.parse(event.body);
 
         // Validate required fields
         if (!team_name || !sport_id || !created_by_user_id) {
@@ -66,13 +66,32 @@ exports.createTeamHandler = async (event, context) => {
             [teamId, created_by_user_id]
         );
 
-        // Fetch the created team with member count
+        // Add additional team members
+        if (team_members.length > 0) {
+            const values = team_members.map(member_id => [teamId, member_id]);
+            await connection.query(
+                'INSERT INTO team_members (team_id, user_id) VALUES ?',
+                [values]
+            );
+        }
+
+        await connection.commit();
+
+        // Fetch the created team with member details
         const [teams] = await connection.execute(`
             SELECT 
                 t.*,
-                COUNT(tm.user_id) as member_count
+                COUNT(tm.user_id) as member_count,
+                JSON_ARRAYAGG(
+                    JSON_OBJECT(
+                        'user_id', u.id,
+                        'name', u.name,
+                        'avatar_url', u.avatar_url
+                    )
+                ) as team_members
             FROM teams t
             LEFT JOIN team_members tm ON t.team_id = tm.team_id
+            LEFT JOIN users u ON tm.user_id = u.id
             WHERE t.team_id = ?
             GROUP BY t.team_id
         `, [teamId]);
@@ -91,6 +110,9 @@ exports.createTeamHandler = async (event, context) => {
         };
 
     } catch (error) {
+        if (connection) {
+            await connection.rollback();
+        }
         console.error('Create team error:', error);
         return {
             statusCode: 500,
