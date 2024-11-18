@@ -118,7 +118,7 @@ exports.loginUserHandler = async (event, context) => {
             ...user,
             passwordHash: '[REDACTED]'  // Don't log the password hash
         });
-        console.log('Type specific data:', user.type_specific_data);
+        console.log('Type specific dataa:', user.type_specific_data);
         const isValidPassword = await bcrypt.compare(password, user.passwordHash);
 
         if (!isValidPassword) {
