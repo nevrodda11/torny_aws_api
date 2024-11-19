@@ -154,6 +154,32 @@ Resources:
             Method: POST
     Metadata:
       SamResourceId: createTeamFunction
+  getTeamsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get-teams/index.getTeamsHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Get all teams with optional filters
+      CodeUri: getTeamsFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /teams
+            Method: GET
+    Metadata:
+      SamResourceId: getTeamsFunction
 Outputs:
   RegisterEndpoint:
     Description: API Gateway endpoint URL for Register function
