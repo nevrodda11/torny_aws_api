@@ -60,17 +60,17 @@ exports.createTeamHandler = async (event, context) => {
 
         const teamId = result.insertId;
 
-        // Add the creator as a team member
+        // Add the creator as an approved team member
         await connection.execute(
-            'INSERT INTO team_members (team_id, user_id) VALUES (?, ?)',
-            [teamId, created_by_user_id]
+            'INSERT INTO team_members (team_id, user_id, status) VALUES (?, ?, ?)',
+            [teamId, created_by_user_id, 'approved']
         );
 
-        // Add additional team members
+        // Add additional team members with pending status
         if (team_members.length > 0) {
-            const values = team_members.map(member_id => [teamId, member_id]);
+            const values = team_members.map(member_id => [teamId, member_id, 'pending']);
             await connection.query(
-                'INSERT INTO team_members (team_id, user_id) VALUES ?',
+                'INSERT INTO team_members (team_id, user_id, status) VALUES ?',
                 [values]
             );
         }
@@ -86,7 +86,8 @@ exports.createTeamHandler = async (event, context) => {
                     JSON_OBJECT(
                         'user_id', u.id,
                         'name', u.name,
-                        'avatar_url', u.avatar_url
+                        'avatar_url', u.avatar_url,
+                        'status', tm.status
                     )
                 ) as team_members
             FROM teams t

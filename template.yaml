@@ -188,6 +188,56 @@ Resources:
             Path: /teams
             Method: GET
 
+  getPlayersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get-players/index.getPlayersHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Get all players from the database
+      CodeUri: src/handlers
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /players
+            Method: GET
+
+  getSportsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get-sports/index.getSportsHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Get all sports from the database
+      CodeUri: src/handlers
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /sports
+            Method: GET
+
 Outputs:
   RegisterEndpoint:
     Description: API Gateway endpoint URL for Register function
@@ -196,3 +246,27 @@ Outputs:
   LoginEndpoint:
     Description: API Gateway endpoint URL for Login function
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/login"
+    
+  GetTeamsEndpoint:
+    Description: API Gateway endpoint URL for Get Teams function
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/teams"
+    
+  CreateTeamEndpoint:
+    Description: API Gateway endpoint URL for Create Team function
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/teams"
+    
+  GetSportsEndpoint:
+    Description: API Gateway endpoint URL for Get Sports function
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/sports"
+    
+  GetPlayersEndpoint:
+    Description: API Gateway endpoint URL for Get Players function
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/players"
+    
+  GetTournamentsEndpoint:
+    Description: API Gateway endpoint URL for Get Tournaments function
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/tournaments"
+    
+  GetTournamentByIdEndpoint:
+    Description: API Gateway endpoint URL for Get Tournament By Id function
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/tournaments/{id}"
