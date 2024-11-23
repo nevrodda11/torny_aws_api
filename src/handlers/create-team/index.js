@@ -35,10 +35,10 @@ exports.createTeamHandler = async (event, context) => {
         await connection.beginTransaction();
         console.log('MySQL connection successful');
 
-        const { team_name, sport_id, team_members = [], created_by_user_id } = JSON.parse(event.body);
+        const { team_name, sport_id, team_members = [], created_by_user_id, team_type } = JSON.parse(event.body);
 
         // Validate required fields
-        if (!team_name || !sport_id || !created_by_user_id) {
+        if (!team_name || !sport_id || !created_by_user_id || !team_type) {
             return {
                 statusCode: 400,
                 headers: {
@@ -54,25 +54,42 @@ exports.createTeamHandler = async (event, context) => {
 
         // Insert the team
         const [result] = await connection.execute(
-            'INSERT INTO teams (team_name, sport_id, created_by_user_id) VALUES (?, ?, ?)',
-            [team_name, sport_id, created_by_user_id]
+            'INSERT INTO teams (team_name, sport_id, created_by_user_id, team_type) VALUES (?, ?, ?, ?)',
+            [team_name, sport_id, created_by_user_id, team_type]
         );
 
         const teamId = result.insertId;
 
-        // Add the creator as an approved team member
+        // Add the creator as an approved team member with position and club
         await connection.execute(
-            'INSERT INTO team_members (team_id, user_id, status) VALUES (?, ?, ?)',
-            [teamId, created_by_user_id, 'approved']
+            'INSERT INTO team_members (team_id, user_id, status, position, club) VALUES (?, ?, ?, ?, ?)',
+            [
+                teamId, 
+                created_by_user_id, 
+                'approved', 
+                team_members.find(m => m.user_id === created_by_user_id)?.position || null,
+                team_members.find(m => m.user_id === created_by_user_id)?.club || null
+            ]
         );
 
-        // Add additional team members with pending status
+        // Add additional team members with pending status, position and club
         if (team_members.length > 0) {
-            const values = team_members.map(member_id => [teamId, member_id, 'pending']);
-            await connection.query(
-                'INSERT INTO team_members (team_id, user_id, status) VALUES ?',
-                [values]
-            );
+            const values = team_members
+                .filter(member => member.user_id !== created_by_user_id)
+                .map(member => [
+                    teamId, 
+                    member.user_id, 
+                    'pending', 
+                    member.position || null,
+                    member.club || null
+                ]);
+            
+            if (values.length > 0) {
+                await connection.query(
+                    'INSERT INTO team_members (team_id, user_id, status, position, club) VALUES ?',
+                    [values]
+                );
+            }
         }
 
         await connection.commit();
@@ -87,7 +104,9 @@ exports.createTeamHandler = async (event, context) => {
                         'user_id', u.id,
                         'name', u.name,
                         'avatar_url', u.avatar_url,
-                        'status', tm.status
+                        'status', tm.status,
+                        'position', tm.position,
+                        'club', tm.club
                     )
                 ) as team_members
             FROM teams t

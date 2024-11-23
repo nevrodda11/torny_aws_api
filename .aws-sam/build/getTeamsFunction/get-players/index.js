@@ -48,7 +48,9 @@ exports.getPlayersHandler = async (event, context) => {
                 u.country,
                 u.state,
                 u.region,
-                pd.sport
+                pd.sport,
+                pd.club,
+                pd.achievements
             FROM users u
             LEFT JOIN players_data pd ON u.id = pd.user_id
             WHERE 1=1
