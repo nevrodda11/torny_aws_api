@@ -35,7 +35,7 @@ exports.getPlayersHandler = async (event, context) => {
         console.log('MySQL connection successful');
 
         // Extract search parameters from query string
-        const { nameSearch, sport, country, state, region } = event.queryStringParameters || {};
+        const { nameSearch, sport, country, state, region, gender } = event.queryStringParameters || {};
 
         let query = `
             SELECT 
@@ -50,7 +50,8 @@ exports.getPlayersHandler = async (event, context) => {
                 u.region,
                 pd.sport,
                 pd.club,
-                pd.achievements
+                pd.achievements,
+                pd.gender
             FROM users u
             LEFT JOIN players_data pd ON u.id = pd.user_id
             WHERE 1=1
@@ -85,6 +86,11 @@ exports.getPlayersHandler = async (event, context) => {
         if (region) {
             query += ` AND LOWER(u.region) = LOWER(?)`;
             params.push(region);
+        }
+
+        if (gender) {
+            query += ` AND LOWER(pd.gender) = LOWER(?)`;
+            params.push(gender);
         }
 
         query += ` ORDER BY u.name ASC`;

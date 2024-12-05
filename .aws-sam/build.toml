@@ -5,7 +5,7 @@ codeuri = "/Users/nevrodda/Documents/torny_aws_api/general/src/handlers"
 runtime = "nodejs18.x"
 architecture = "x86_64"
 handler = "register-user/index.registerUserHandler"
-manifest_hash = "03a083701782965c0a2bddfc8918d3c2"
+manifest_hash = "5317ce8661e3208a621cc6da7a1bbefb"
 packagetype = "Zip"
 functions = ["registerUserFunction", "loginUserFunction", "getTournamentsFunction", "getTournamentByIdFunction", "createTeamFunction", "getTeamsFunction", "getPlayersFunction", "getSportsFunction"]
 

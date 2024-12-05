@@ -2,8 +2,11 @@
   "name": "register-user",
   "version": "1.0.0",
   "dependencies": {
-    "mysql2": "^3.6.5",
+    "aws-sdk": "^2.1692.0",
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.0"
+    "jsonwebtoken": "^9.0.0",
+    "mysql2": "^3.6.5",
+    "sharp": "^0.33.5",
+    "uuid": "^11.0.3"
   }
-} 
+}

@@ -35,10 +35,20 @@ exports.createTeamHandler = async (event, context) => {
         await connection.beginTransaction();
         console.log('MySQL connection successful');
 
-        const { team_name, sport_id, team_members = [], created_by_user_id, team_type } = JSON.parse(event.body);
+        const { 
+            team_name, 
+            sport_id, 
+            team_members = [], 
+            created_by_user_id, 
+            team_type,
+            team_gender,
+            country,
+            state,
+            region
+        } = JSON.parse(event.body);
 
         // Validate required fields
-        if (!team_name || !sport_id || !created_by_user_id || !team_type) {
+        if (!team_name || !sport_id || !created_by_user_id || !team_type || !team_gender) {
             return {
                 statusCode: 400,
                 headers: {
@@ -54,8 +64,26 @@ exports.createTeamHandler = async (event, context) => {
 
         // Insert the team
         const [result] = await connection.execute(
-            'INSERT INTO teams (team_name, sport_id, created_by_user_id, team_type) VALUES (?, ?, ?, ?)',
-            [team_name, sport_id, created_by_user_id, team_type]
+            `INSERT INTO teams (
+                team_name, 
+                sport_id, 
+                created_by_user_id, 
+                team_type,
+                team_gender,
+                country,
+                state,
+                region
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                team_name, 
+                sport_id, 
+                created_by_user_id, 
+                team_type,
+                team_gender,
+                country || null,
+                state || null,
+                region || null
+            ]
         );
 
         const teamId = result.insertId;

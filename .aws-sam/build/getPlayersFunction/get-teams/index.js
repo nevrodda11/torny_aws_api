@@ -6,7 +6,7 @@ const validateEnvVars = () => {
     const missing = required.filter(envVar => !process.env[envVar]);
     
     if (missing.length > 0) {
-        console.error('Missing environment variabless:', missing);
+        console.error('Missing environment variables:', missing);
         throw new Error(`Missing environment variables: ${missing.join(', ')}`);
     }
     console.log('Environment validation successful');
@@ -35,19 +35,25 @@ exports.getTeamsHandler = async (event, context) => {
         console.log('MySQL connection successful');
 
         // Extract filter parameters from the query string
-        const { search, sport_id } = event.queryStringParameters || {};
+        const { search, sport_id, type, gender, country, state } = event.queryStringParameters || {};
 
         // Build the SQL query with filters
         let query = `
             SELECT 
                 t.*,
+                t.avatar,
+                t.main_image,
+                t.images,
                 s.name as sport_name,
                 COUNT(tm.user_id) as member_count,
                 JSON_ARRAYAGG(
                     JSON_OBJECT(
                         'user_id', u.id,
                         'name', u.name,
-                        'avatar_url', u.avatar_url
+                        'avatar_url', u.avatar_url,
+                        'status', tm.status,
+                        'position', tm.position,
+                        'club', tm.club
                     )
                 ) as team_members
             FROM teams t
@@ -71,6 +77,26 @@ exports.getTeamsHandler = async (event, context) => {
         if (sport_id) {
             query += ` AND t.sport_id = ?`;
             params.push(sport_id);
+        }
+
+        if (type) {
+            query += ` AND LOWER(t.team_type) = LOWER(?)`;
+            params.push(type);
+        }
+
+        if (gender) {
+            query += ` AND LOWER(t.team_gender) = LOWER(?)`;
+            params.push(gender);
+        }
+
+        if (country) {
+            query += ` AND LOWER(t.country) = LOWER(?)`;
+            params.push(country);
+        }
+
+        if (state) {
+            query += ` AND LOWER(t.state) = LOWER(?)`;
+            params.push(state);
         }
 
         query += ` GROUP BY t.team_id ORDER BY t.created_at DESC`;
