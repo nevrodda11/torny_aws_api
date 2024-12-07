@@ -7,6 +7,6 @@ architecture = "x86_64"
 handler = "register-user/index.registerUserHandler"
 manifest_hash = "5317ce8661e3208a621cc6da7a1bbefb"
 packagetype = "Zip"
-functions = ["registerUserFunction", "loginUserFunction", "getTournamentsFunction", "getTournamentByIdFunction", "createTeamFunction", "getTeamsFunction", "getPlayersFunction", "getSportsFunction"]
+functions = ["registerUserFunction", "loginUserFunction", "getTournamentsFunction", "getTournamentByIdFunction", "createTeamFunction", "getTeamsFunction", "getPlayersFunction", "getSportsFunction", "enterTournamentFunction", "getTournamentEntriesFunction", "checkEntryFunction"]
 
 [layer_build_definitions]

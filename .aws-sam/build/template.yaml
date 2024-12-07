@@ -232,6 +232,84 @@ Resources:
             Method: GET
     Metadata:
       SamResourceId: getSportsFunction
+  enterTournamentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: create-entry/index.enterTournamentHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Enter a team into a tournament
+      CodeUri: enterTournamentFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /entry
+            Method: POST
+    Metadata:
+      SamResourceId: enterTournamentFunction
+  getTournamentEntriesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get-entries/index.getTournamentEntriesHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Get tournament entries
+      CodeUri: getTournamentEntriesFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /tournament-entries/{tournament_id}
+            Method: GET
+    Metadata:
+      SamResourceId: getTournamentEntriesFunction
+  checkEntryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: check-entry/index.entryLookupHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Check if a user is entered into a tournament
+      CodeUri: checkEntryFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /check-entry
+            Method: POST
+    Metadata:
+      SamResourceId: checkEntryFunction
 Outputs:
   RegisterEndpoint:
     Description: API Gateway endpoint URL for Register function
