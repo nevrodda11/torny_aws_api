@@ -1,4 +1,6 @@
 const mysql = require('mysql2/promise');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const validateEnvVars = () => {
     console.log('Starting environment variable validation');
@@ -22,6 +24,33 @@ const connectionConfig = {
         rejectUnauthorized: false
     }
 };
+
+// Function to generate a random password
+const generateRandomPassword = (length = 12) => {
+    return crypto.randomBytes(length).toString('hex').slice(0, length);
+};
+
+function generateReferenceId() {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numbers = '0123456789';
+    
+    let refId = '';
+    
+    // Generate 4 random letters
+    for (let i = 0; i < 4; i++) {
+        refId += letters.charAt(Math.floor(Math.random() * letters.length));
+    }
+    
+    // Generate 4 random numbers
+    for (let i = 0; i < 4; i++) {
+        refId += numbers.charAt(Math.floor(Math.random() * numbers.length));
+    }
+    
+    // Shuffle the characters to mix letters and numbers
+    refId = refId.split('').sort(() => 0.5 - Math.random()).join('');
+    
+    return refId;
+}
 
 exports.enterTournamentHandler = async (event, context) => {
     console.log('Processing enter tournament request');
@@ -166,8 +195,67 @@ exports.enterTournamentHandler = async (event, context) => {
                 const tempTeamId = tempTeamResult.insertId;
                 console.log('Created temporary team with ID:', tempTeamId);
 
-                // 2. Add team members
+                // 2. Add team members and handle manual entries
                 for (const member of temporaryTeam.members) {
+                    let userId = member.user_id;
+
+                    // If user_id is null, check for existing user by email
+                    if (!userId) {
+                        const [existingUser] = await connection.execute(
+                            `SELECT id FROM users WHERE email = ?`,
+                            [member.email]
+                        );
+
+                        if (existingUser.length > 0) {
+                            userId = existingUser[0].id;
+                            console.log(`Using existing user ID: ${userId} for email: ${member.email}`);
+                        } else {
+                            // Generate a random password and hash it
+                            const randomPassword = generateRandomPassword();
+                            const passwordHash = bcrypt.hashSync(randomPassword, 10);
+
+                            // Insert a new user as a placeholder with a random password hash
+                            const [result] = await connection.execute(
+                                `INSERT INTO users (
+                                    name,
+                                    email,
+                                    phone,
+                                    avatar_url,
+                                    user_type,
+                                    passwordHash
+                                ) VALUES (?, ?, ?, ?, 'player', ?)`,
+                                [
+                                    member.name || null,
+                                    member.email || null,
+                                    member.phone || null,
+                                    member.avatar_url || null,
+                                    passwordHash
+                                ]
+                            );
+                            userId = result.insertId;
+                            console.log(`Created placeholder user with ID: ${userId}`);
+                        }
+                    }
+
+                    // Ensure gender is one of the ENUM values
+                    const validGenders = ['Male', 'Female', 'Other'];
+                    const gender = validGenders.includes(member.gender) ? member.gender : 'Other';
+
+                    // Insert or update player data
+                    await connection.execute(
+                        `INSERT INTO players_data (user_id, club, sport, gender)
+                         VALUES (?, ?, ?, ?)
+                         ON DUPLICATE KEY UPDATE club = VALUES(club), sport = VALUES(sport), gender = VALUES(gender)`,
+                        [
+                            userId,
+                            member.club || null,
+                            member.sport || null,
+                            gender
+                        ]
+                    );
+                    console.log(`Updated players_data for user ${userId} with club ${member.club}, sport ${member.sport}, and gender ${gender}`);
+
+                    // Insert team member
                     await connection.execute(
                         `INSERT INTO team_members (
                             temp_team_id,
@@ -176,21 +264,30 @@ exports.enterTournamentHandler = async (event, context) => {
                             joined_at,
                             club
                         ) VALUES (?, ?, ?, NOW(), ?)`,
-                        [tempTeamId, member.user_id, member.position, temporaryTeam.club || null]
+                        [
+                            tempTeamId,
+                            userId,
+                            member.position || null,
+                            member.club || null
+                        ]
                     );
+                    console.log(`Added team member ${userId} with position ${member.position}`);
                 }
                 console.log('Added team members with club:', temporaryTeam.club);
 
                 // 3. Create tournament entry
+                const referenceId = generateReferenceId();
                 await connection.execute(
                     `INSERT INTO entries (
                         tournament_id,
                         temp_team_id,
-                        entry_date
-                    ) VALUES (?, ?, NOW())`,
-                    [tournament_id, tempTeamId]
+                        entry_date,
+                        payment_status,
+                        reference_id
+                    ) VALUES (?, ?, NOW(), 'unpaid', ?)`,
+                    [tournament_id, tempTeamId, referenceId]
                 );
-                console.log('Created tournament entry');
+                console.log('Created tournament entry with reference ID:', referenceId);
 
                 await connection.commit();
                 console.log('Transaction committed successfully');
@@ -205,7 +302,8 @@ exports.enterTournamentHandler = async (event, context) => {
                         status: "success",
                         message: "Temporary team entered successfully",
                         data: {
-                            temp_team_id: tempTeamId
+                            temp_team_id: tempTeamId,
+                            reference_id: referenceId
                         }
                     })
                 };
@@ -230,9 +328,7 @@ exports.enterTournamentHandler = async (event, context) => {
                 
                 throw error;
             }
-        }
-
-        if (isTeamEntry) {
+        } else if (isTeamEntry) {
             console.log('Processing team entry with values:', {
                 tournament_id,
                 team_id,
@@ -293,15 +389,34 @@ exports.enterTournamentHandler = async (event, context) => {
                 };
             }
 
+            const referenceId = generateReferenceId();
             const [result] = await connection.execute(
                 `INSERT INTO entries (
                     tournament_id,
                     team_id,
                     user_id,
-                    entry_date
-                ) VALUES (?, ?, NULL, NOW())`,
-                [tournament_id, team_id]
+                    entry_date,
+                    reference_id
+                ) VALUES (?, ?, NULL, NOW(), ?)`,
+                [tournament_id, team_id, referenceId]
             );
+
+            await connection.commit();
+
+            return {
+                statusCode: 201,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                body: JSON.stringify({
+                    status: "success",
+                    message: "Team tournament entry submitted successfully",
+                    data: {
+                        reference_id: referenceId
+                    }
+                })
+            };
         } else {
             console.log('Processing individual entry with values:', {
                 tournament_id,
@@ -331,32 +446,35 @@ exports.enterTournamentHandler = async (event, context) => {
                 };
             }
 
+            const referenceId = generateReferenceId();
             const [result] = await connection.execute(
                 `INSERT INTO entries (
                     tournament_id,
                     team_id,
                     user_id,
-                    entry_date
-                ) VALUES (?, NULL, ?, NOW())`,
-                [tournament_id, playerUserId]
+                    entry_date,
+                    reference_id
+                ) VALUES (?, NULL, ?, NOW(), ?)`,
+                [tournament_id, playerUserId, referenceId]
             );
+
+            await connection.commit();
+
+            return {
+                statusCode: 201,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                body: JSON.stringify({
+                    status: "success",
+                    message: "Individual tournament entry submitted successfully",
+                    data: {
+                        reference_id: referenceId
+                    }
+                })
+            };
         }
-
-        await connection.commit();
-
-        return {
-            statusCode: 201,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            body: JSON.stringify({
-                status: "success",
-                message: isTeamEntry ? 
-                    "Team tournament entry submitted successfully" : 
-                    "Individual tournament entry submitted successfully"
-            })
-        };
 
     } catch (error) {
         console.error('Error details:', {
