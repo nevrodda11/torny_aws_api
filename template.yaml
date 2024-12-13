@@ -14,6 +14,13 @@ Transform:
 
 # Resources declares the AWS resources that you want to include in the stack
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html
+
+Globals:
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,OPTIONS'"
+      AllowHeaders: "'Content-Type,Authorization'"
+      AllowOrigin: "'*'"
 Resources:
   registerUserFunction:
     Type: AWS::Serverless::Function
@@ -186,6 +193,31 @@ Resources:
           Type: Api
           Properties:
             Path: /teams
+            Method: GET
+
+  getTeamByIdFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get-team-by-id/index.getTeamByIdHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Get a team by id
+      CodeUri: src/handlers
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /teams/{id}
             Method: GET
 
   getPlayersFunction:

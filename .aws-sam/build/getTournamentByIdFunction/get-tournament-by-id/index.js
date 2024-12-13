@@ -40,7 +40,10 @@ exports.getTournamentByIdHandler = async (event, context) => {
             return {
                 statusCode: 400,
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET,OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type,Authorization'
                 },
                 body: JSON.stringify({
                     status: "error",
@@ -89,7 +92,10 @@ exports.getTournamentByIdHandler = async (event, context) => {
             return {
                 statusCode: 404,
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET,OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type,Authorization'
                 },
                 body: JSON.stringify({
                     status: "error",
@@ -101,7 +107,10 @@ exports.getTournamentByIdHandler = async (event, context) => {
         return {
             statusCode: 200,
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET,OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type,Authorization'
             },
             body: JSON.stringify({
                 status: "success",
@@ -110,11 +119,14 @@ exports.getTournamentByIdHandler = async (event, context) => {
         };
 
     } catch (error) {
-        console.error('Get tournament by id error:', error);
+        console.error('Get tournament by id errorr:', error);
         return {
             statusCode: 500,
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET,OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type,Authorization'
             },
             body: JSON.stringify({
                 status: "error",

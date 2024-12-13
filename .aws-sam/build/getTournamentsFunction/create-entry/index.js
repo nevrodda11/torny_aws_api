@@ -275,7 +275,7 @@ exports.enterTournamentHandler = async (event, context) => {
                 }
                 console.log('Added team members with club:', temporaryTeam.club);
 
-                // 3. Create tournament entry
+                // 3. Create tournament entry and update entries count
                 const referenceId = generateReferenceId();
                 await connection.execute(
                     `INSERT INTO entries (
@@ -287,7 +287,12 @@ exports.enterTournamentHandler = async (event, context) => {
                     ) VALUES (?, ?, NOW(), 'unpaid', ?)`,
                     [tournament_id, tempTeamId, referenceId]
                 );
-                console.log('Created tournament entry with reference ID:', referenceId);
+
+                // Increment tournament entries count
+                await connection.execute(
+                    'UPDATE tournaments SET entries = entries + 1 WHERE id = ?',
+                    [tournament_id]
+                );
 
                 await connection.commit();
                 console.log('Transaction committed successfully');
@@ -390,7 +395,7 @@ exports.enterTournamentHandler = async (event, context) => {
             }
 
             const referenceId = generateReferenceId();
-            const [result] = await connection.execute(
+            await connection.execute(
                 `INSERT INTO entries (
                     tournament_id,
                     team_id,
@@ -399,6 +404,12 @@ exports.enterTournamentHandler = async (event, context) => {
                     reference_id
                 ) VALUES (?, ?, NULL, NOW(), ?)`,
                 [tournament_id, team_id, referenceId]
+            );
+
+            // Increment tournament entries count
+            await connection.execute(
+                'UPDATE tournaments SET entries = entries + 1 WHERE id = ?',
+                [tournament_id]
             );
 
             await connection.commit();
@@ -447,7 +458,7 @@ exports.enterTournamentHandler = async (event, context) => {
             }
 
             const referenceId = generateReferenceId();
-            const [result] = await connection.execute(
+            await connection.execute(
                 `INSERT INTO entries (
                     tournament_id,
                     team_id,
@@ -456,6 +467,12 @@ exports.enterTournamentHandler = async (event, context) => {
                     reference_id
                 ) VALUES (?, NULL, ?, NOW(), ?)`,
                 [tournament_id, playerUserId, referenceId]
+            );
+
+            // Increment tournament entries count
+            await connection.execute(
+                'UPDATE tournaments SET entries = entries + 1 WHERE id = ?',
+                [tournament_id]
             );
 
             await connection.commit();

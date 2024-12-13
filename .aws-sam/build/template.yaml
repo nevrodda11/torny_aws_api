@@ -2,6 +2,12 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: general
 Transform:
 - AWS::Serverless-2016-10-31
+Globals:
+  Api:
+    Cors:
+      AllowMethods: '''GET,POST,OPTIONS'''
+      AllowHeaders: '''Content-Type,Authorization'''
+      AllowOrigin: '''*'''
 Resources:
   registerUserFunction:
     Type: AWS::Serverless::Function
@@ -180,6 +186,32 @@ Resources:
             Method: GET
     Metadata:
       SamResourceId: getTeamsFunction
+  getTeamByIdFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get-team-by-id/index.getTeamByIdHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Get a team by id
+      CodeUri: getTeamByIdFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /teams/{id}
+            Method: GET
+    Metadata:
+      SamResourceId: getTeamByIdFunction
   getPlayersFunction:
     Type: AWS::Serverless::Function
     Properties:
