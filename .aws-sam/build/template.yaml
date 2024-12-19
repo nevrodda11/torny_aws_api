@@ -160,6 +160,32 @@ Resources:
             Method: GET
     Metadata:
       SamResourceId: getTournamentByIdFunction
+  getOrganiserTournamentByIdFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get-organisers-tournaments/index.getOrganisersTournamentsHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Get all tournaments for a specific organiser
+      CodeUri: getOrganiserTournamentByIdFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /organiser-tournaments/{id}
+            Method: GET
+    Metadata:
+      SamResourceId: getOrganiserTournamentByIdFunction
   createTeamFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -368,6 +394,29 @@ Resources:
             Method: POST
     Metadata:
       SamResourceId: checkEntryFunction
+  uploadImagesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: upload-images/index.uploadImagesHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Upload images to Cloudflare R2
+      CodeUri: uploadImagesFunction
+      Environment:
+        Variables:
+          CLOUDFLARE_ACCOUNT_ID: a444cf6360af34f45ccfb4aaff861a86
+          CLOUDFLARE_API_TOKEN: hGqlnq0T2ch_0hNcki38agoUqutIfpAhJgZ41IPa
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /upload-images
+            Method: POST
+    Metadata:
+      SamResourceId: uploadImagesFunction
 Outputs:
   RegisterEndpoint:
     Description: API Gateway endpoint URL for Register function

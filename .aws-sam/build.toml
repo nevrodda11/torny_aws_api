@@ -5,8 +5,8 @@ codeuri = "/Users/nevrodda/Documents/torny_aws_api/general/src/handlers"
 runtime = "nodejs18.x"
 architecture = "x86_64"
 handler = "register-user/index.registerUserHandler"
-manifest_hash = "5317ce8661e3208a621cc6da7a1bbefb"
+manifest_hash = "11612c1689a14e7f2f1152281aa3198e"
 packagetype = "Zip"
-functions = ["registerUserFunction", "loginUserFunction", "createTournamentFunction", "getTournamentsFunction", "getTournamentByIdFunction", "createTeamFunction", "getTeamsFunction", "getTeamByIdFunction", "getPlayersFunction", "getSportsFunction", "enterTournamentFunction", "getTournamentEntriesFunction", "checkEntryFunction"]
+functions = ["registerUserFunction", "loginUserFunction", "createTournamentFunction", "getTournamentsFunction", "getTournamentByIdFunction", "getOrganiserTournamentByIdFunction", "createTeamFunction", "getTeamsFunction", "getTeamByIdFunction", "getPlayersFunction", "getSportsFunction", "enterTournamentFunction", "getTournamentEntriesFunction", "checkEntryFunction", "uploadImagesFunction"]
 
 [layer_build_definitions]
