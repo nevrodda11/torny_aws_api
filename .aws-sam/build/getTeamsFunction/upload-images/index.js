@@ -62,7 +62,8 @@ async function uploadSingleImage(image, filename) {
             url: `${baseDeliveryUrl}/${result.result.id}`, // Base URL without variant
             variants: {
                 public: `${baseDeliveryUrl}/${result.result.id}/public`,
-                thumbnail: `${baseDeliveryUrl}/${result.result.id}/thumbnail`
+                thumbnail: `${baseDeliveryUrl}/${result.result.id}/thumbnail`,
+                avatar: `${baseDeliveryUrl}/${result.result.id}/avatar`
             },
             filename: filename
         };

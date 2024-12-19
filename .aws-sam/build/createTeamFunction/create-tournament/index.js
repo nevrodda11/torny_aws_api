@@ -1,4 +1,5 @@
 const mysql = require('mysql2/promise');
+const fetch = require('node-fetch');
 
 const VALID_PAYMENT_TYPES = ['cash', 'credit', 'bank transfer', 'other'];
 const VALID_MANAGE_TYPES = ['self', 'torny', 'hybrid'];
@@ -27,20 +28,66 @@ const connectionConfig = {
     }
 };
 
+async function uploadTournamentImage(imageData, filename) {
+    try {
+        const response = await fetch('https://ieg3lhlyy0.execute-api.ap-southeast-2.amazonaws.com/Prod/upload-images', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                images: [{
+                    image: imageData,
+                    filename: filename
+                }]
+            })
+        });
+
+        const result = await response.json();
+        console.log('Image upload response:', JSON.stringify(result, null, 2));
+
+        if (!result.success && !result.status === 'success') {
+            throw new Error('Failed to upload image');
+        }
+
+        // Extract the first image from the response
+        const uploadedImage = result.data[0];
+        console.log('Uploaded image data:', JSON.stringify(uploadedImage, null, 2));
+
+        // Verify the variants exist
+        if (!uploadedImage.variants) {
+            console.error('No variants found in response');
+            throw new Error('Image upload response missing variants');
+        }
+
+        return uploadedImage;
+    } catch (error) {
+        console.error('Error in uploadTournamentImage:', error);
+        throw error;
+    }
+}
+
 exports.createTournamentHandler = async (event, context) => {
     console.log('Starting tournament creation process');
-    console.log('Received event:', JSON.stringify(event, null, 2));
     let connection = null;
+    let imageData = null;
     
     try {
-        console.log('Validating environment variables');
         validateEnvVars();
+        const requestBody = JSON.parse(event.body);
         
+        // Handle image upload if present
+        if (requestBody.image?.data) {
+            console.log('Uploading tournament image');
+            imageData = await uploadTournamentImage(
+                requestBody.image.data,
+                `tournament-${Date.now()}.jpg`
+            );
+            console.log('Image data received:', JSON.stringify(imageData, null, 2));
+        }
+
         // Parse the request body
         console.log('Parsing request body');
-        const requestBody = JSON.parse(event.body);
-        console.log('Received request body:', JSON.stringify(requestBody, null, 2));
-        
         const { 
             title, description, sport, gender, location,
             entries, entry_fee, total_prize_money, first_prize,
@@ -151,8 +198,8 @@ exports.createTournamentHandler = async (event, context) => {
             second_prize, third_prize, payment_type, manage_type, entries_close,
             start_date, end_date, created_by_user_id,
             approved, featured, country, state, region,
-            max_entries, entry_type
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            max_entries, entry_type, hero_image, thumbnail_image
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         const insertValues = [
             title, description, sport, type, gender, location,
@@ -160,7 +207,9 @@ exports.createTournamentHandler = async (event, context) => {
             second_prize, third_prize, payment_type, manage_type, entries_close,
             start_date, end_date, created_by_user_id,
             approved ?? null, featured ?? null, country ?? null, state ?? null, region ?? null,
-            max_entries ?? null, entry_type
+            max_entries ?? null, entry_type,
+            imageData?.variants?.public ?? null,  // hero_image
+            imageData?.variants?.thumbnail ?? null // thumbnail_image
         ];
 
         console.log('Executing insert query:', insertQuery);
@@ -185,7 +234,9 @@ exports.createTournamentHandler = async (event, context) => {
                 status: "success",
                 message: "Tournament created successfully",
                 data: {
-                    tournament_id: result.insertId
+                    tournament_id: result.insertId,
+                    hero_image: imageData?.variants?.public,
+                    thumbnail_image: imageData?.variants?.thumbnail
                 }
             })
         };
