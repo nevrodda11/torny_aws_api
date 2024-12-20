@@ -6,7 +6,7 @@ const validateEnvVars = () => {
     const missing = required.filter(envVar => !process.env[envVar]);
     
     if (missing.length > 0) {
-        console.error('Missing environment variables:', missing);
+        console.error('Missing environment variabless:', missing);
         throw new Error(`Missing environment variables: ${missing.join(', ')}`);
     }
     console.log('Environment validation successful');
@@ -62,15 +62,20 @@ exports.getTournamentEntriesHandler = async (event, context) => {
                 t.region,
                 'permanent' as entry_type,
                 e.entry_date,
+                e.payment_status,
+                e.reference_id,
                 GROUP_CONCAT(DISTINCT tm.user_id) as member_ids,
                 GROUP_CONCAT(DISTINCT tm.position) as member_positions,
                 GROUP_CONCAT(DISTINCT tm.club) as member_clubs,
                 GROUP_CONCAT(DISTINCT u.name) as member_names,
-                GROUP_CONCAT(u.avatar_url) as member_avatar_urls
+                GROUP_CONCAT(DISTINCT u.avatar_url) as member_avatar_urls,
+                GROUP_CONCAT(DISTINCT pd.sport) as member_sports,
+                GROUP_CONCAT(DISTINCT pd.gender) as member_genders
             FROM entries e
             JOIN teams t ON e.team_id = t.team_id
             LEFT JOIN team_members tm ON t.team_id = tm.team_id
             LEFT JOIN users u ON tm.user_id = u.id
+            LEFT JOIN players_data pd ON tm.user_id = pd.user_id
             WHERE e.tournament_id = ?
             GROUP BY 
                 t.team_id, 
@@ -81,7 +86,9 @@ exports.getTournamentEntriesHandler = async (event, context) => {
                 t.country,
                 t.state,
                 t.region,
-                e.entry_date
+                e.entry_date,
+                e.payment_status,
+                e.reference_id
         `, [tournament_id]);
 
         // Get temporary team entries
@@ -98,15 +105,20 @@ exports.getTournamentEntriesHandler = async (event, context) => {
                 tt.region,
                 'temporary' as entry_type,
                 e.entry_date,
+                e.payment_status,
+                e.reference_id,
                 GROUP_CONCAT(DISTINCT tm.user_id) as member_ids,
                 GROUP_CONCAT(DISTINCT tm.position) as member_positions,
                 GROUP_CONCAT(DISTINCT tm.club) as member_clubs,
                 GROUP_CONCAT(DISTINCT u.name) as member_names,
-                GROUP_CONCAT(u.avatar_url) as member_avatar_urls
+                GROUP_CONCAT(DISTINCT u.avatar_url) as member_avatar_urls,
+                GROUP_CONCAT(DISTINCT pd.sport) as member_sports,
+                GROUP_CONCAT(DISTINCT pd.gender) as member_genders
             FROM entries e
             JOIN temporary_teams tt ON e.temp_team_id = tt.temp_team_id
             LEFT JOIN team_members tm ON tt.temp_team_id = tm.temp_team_id
             LEFT JOIN users u ON tm.user_id = u.id
+            LEFT JOIN players_data pd ON tm.user_id = pd.user_id
             WHERE e.tournament_id = ?
             GROUP BY 
                 tt.temp_team_id,
@@ -118,7 +130,9 @@ exports.getTournamentEntriesHandler = async (event, context) => {
                 tt.country,
                 tt.state,
                 tt.region,
-                e.entry_date
+                e.entry_date,
+                e.payment_status,
+                e.reference_id
         `, [tournament_id]);
 
         // Get individual entries
@@ -135,31 +149,86 @@ exports.getTournamentEntriesHandler = async (event, context) => {
                 u.region,
                 'individual' as entry_type,
                 e.entry_date,
+                e.payment_status,
+                e.reference_id,
                 e.user_id as member_ids,
                 NULL as member_positions,
-                NULL as member_clubs
+                NULL as member_clubs,
+                GROUP_CONCAT(DISTINCT pd.sport) as member_sports,
+                GROUP_CONCAT(DISTINCT pd.gender) as member_genders
             FROM entries e
             JOIN users u ON e.user_id = u.id
+            LEFT JOIN players_data pd ON e.user_id = pd.user_id
             WHERE e.tournament_id = ? 
             AND e.team_id IS NULL 
             AND e.temp_team_id IS NULL
+            GROUP BY 
+                e.user_id,
+                u.name,
+                u.avatar_url,
+                u.country,
+                u.state,
+                u.region,
+                e.entry_date,
+                e.payment_status,
+                e.reference_id
         `, [tournament_id]);
 
         // Process the entries to convert string lists to arrays of player objects
         const processEntries = (entries, entryType) => {
             return entries.map(entry => {
-                const memberIds = entry.member_ids ? entry.member_ids.split(',').map(Number) : [];
-                const memberPositions = entry.member_positions ? entry.member_positions.split(',') : [];
-                const memberClubs = entry.member_clubs ? entry.member_clubs.split(',') : [];
-                const memberNames = entry.member_names ? entry.member_names.split(',') : [];
-                const memberAvatarUrls = entry.member_avatar_urls ? entry.member_avatar_urls.split(',') : [];
+                // Handle both string and number types for member_ids
+                const memberIds = entry.member_ids 
+                    ? (typeof entry.member_ids === 'string' 
+                        ? entry.member_ids.split(',').map(Number)
+                        : [Number(entry.member_ids)])
+                    : [];
+
+                // Handle other fields similarly
+                const memberPositions = entry.member_positions 
+                    ? (typeof entry.member_positions === 'string'
+                        ? entry.member_positions.split(',')
+                        : [entry.member_positions])
+                    : [];
+
+                const memberClubs = entry.member_clubs
+                    ? (typeof entry.member_clubs === 'string'
+                        ? entry.member_clubs.split(',')
+                        : [entry.member_clubs])
+                    : [];
+
+                const memberNames = entry.member_names
+                    ? (typeof entry.member_names === 'string'
+                        ? entry.member_names.split(',')
+                        : [entry.member_names])
+                    : [];
+
+                const memberAvatarUrls = entry.member_avatar_urls
+                    ? (typeof entry.member_avatar_urls === 'string'
+                        ? entry.member_avatar_urls.split(',')
+                        : [entry.member_avatar_urls])
+                    : [];
+
+                const memberSports = entry.member_sports
+                    ? (typeof entry.member_sports === 'string'
+                        ? entry.member_sports.split(',')
+                        : [entry.member_sports])
+                    : [];
+
+                const memberGenders = entry.member_genders
+                    ? (typeof entry.member_genders === 'string'
+                        ? entry.member_genders.split(',')
+                        : [entry.member_genders])
+                    : [];
 
                 const members = memberIds.map((id, index) => ({
                     user_id: id,
                     position: memberPositions[index] || null,
                     club: memberClubs[index] || null,
                     name: memberNames[index] || null,
-                    avatar_url: memberAvatarUrls[index] || null
+                    avatar_url: memberAvatarUrls[index] || null,
+                    sport: memberSports[index] || null,
+                    gender: memberGenders[index] || null
                 }));
 
                 // Determine entry category

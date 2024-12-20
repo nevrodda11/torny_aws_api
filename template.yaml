@@ -370,8 +370,6 @@ Resources:
             Path: /tournament-entries/{tournament_id}
             Method: GET
 
-  
-
   checkEntryFunction:
     Type: AWS::Serverless::Function
     Properties:

@@ -89,7 +89,7 @@ exports.createTournamentHandler = async (event, context) => {
         // Parse the request body
         console.log('Parsing request body');
         const { 
-            title, description, sport, gender, location,
+            title, description, sport, sport_id, gender, location,
             entries, entry_fee, total_prize_money, first_prize,
             second_prize, third_prize, entries_close,
             start_date, end_date, created_by_user_id,
@@ -193,23 +193,24 @@ exports.createTournamentHandler = async (event, context) => {
         await connection.beginTransaction();
 
         const insertQuery = `INSERT INTO tournaments (
-            title, description, sport, type, gender, location,
+            title, description, sport, sport_id, type, gender, location,
             entries, entry_fee, total_prize_money, first_prize,
             second_prize, third_prize, payment_type, manage_type, entries_close,
             start_date, end_date, created_by_user_id,
             approved, featured, country, state, region,
-            max_entries, entry_type, hero_image, thumbnail_image
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            max_entries, entry_type, hero_image, thumbnail_image, image_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         const insertValues = [
-            title, description, sport, type, gender, location,
+            title, description, sport, sport_id ?? null, type, gender, location,
             entries, entry_fee, total_prize_money, first_prize,
             second_prize, third_prize, payment_type, manage_type, entries_close,
             start_date, end_date, created_by_user_id,
             approved ?? null, featured ?? null, country ?? null, state ?? null, region ?? null,
             max_entries ?? null, entry_type,
             imageData?.variants?.public ?? null,  // hero_image
-            imageData?.variants?.thumbnail ?? null // thumbnail_image
+            imageData?.variants?.thumbnail ?? null, // thumbnail_image
+            imageData?.id ?? null  // image_id
         ];
 
         console.log('Executing insert query:', insertQuery);
@@ -236,7 +237,8 @@ exports.createTournamentHandler = async (event, context) => {
                 data: {
                     tournament_id: result.insertId,
                     hero_image: imageData?.variants?.public,
-                    thumbnail_image: imageData?.variants?.thumbnail
+                    thumbnail_image: imageData?.variants?.thumbnail,
+                    image_id: imageData?.id
                 }
             })
         };
