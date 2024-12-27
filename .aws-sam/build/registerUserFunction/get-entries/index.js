@@ -140,13 +140,14 @@ exports.getTournamentEntriesHandler = async (event, context) => {
             SELECT 
                 NULL as team_id,
                 u.name as team_name,
-                NULL as club,
+                pd.club,
                 'singles' as team_type,
                 NULL as team_gender,
                 u.avatar_url as avatar,
                 u.country,
                 u.state,
                 u.region,
+                u.phone,
                 'individual' as entry_type,
                 e.entry_date,
                 e.payment_status,
@@ -154,24 +155,24 @@ exports.getTournamentEntriesHandler = async (event, context) => {
                 e.user_id as member_ids,
                 NULL as member_positions,
                 NULL as member_clubs,
-                GROUP_CONCAT(DISTINCT pd.sport) as member_sports,
-                GROUP_CONCAT(DISTINCT pd.gender) as member_genders
+                pd.sport as member_sports,
+                pd.gender as member_genders,
+                pd.achievements
             FROM entries e
             JOIN users u ON e.user_id = u.id
-            LEFT JOIN players_data pd ON e.user_id = pd.user_id
+            LEFT JOIN (
+                SELECT 
+                    user_id,
+                    MAX(club) as club,
+                    MAX(sport) as sport,
+                    MAX(gender) as gender,
+                    MAX(achievements) as achievements
+                FROM players_data
+                GROUP BY user_id
+            ) pd ON e.user_id = pd.user_id
             WHERE e.tournament_id = ? 
             AND e.team_id IS NULL 
             AND e.temp_team_id IS NULL
-            GROUP BY 
-                e.user_id,
-                u.name,
-                u.avatar_url,
-                u.country,
-                u.state,
-                u.region,
-                e.entry_date,
-                e.payment_status,
-                e.reference_id
         `, [tournament_id]);
 
         // Process the entries to convert string lists to arrays of player objects

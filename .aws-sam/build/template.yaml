@@ -394,6 +394,32 @@ Resources:
             Method: POST
     Metadata:
       SamResourceId: checkEntryFunction
+  entryStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: entry-status/index.updateEntryStatusHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Update the status of an entry
+      CodeUri: entryStatusFunction
+      Environment:
+        Variables:
+          DB_HOST: tornymysql.mysql.database.azure.com
+          DB_PORT: 3306
+          DB_USER: tornymysql
+          DB_PASSWORD: Robots4ever1!
+          DB_NAME: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /update-entry-status
+            Method: POST
+    Metadata:
+      SamResourceId: entryStatusFunction
   uploadImagesFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -417,6 +443,29 @@ Resources:
             Method: POST
     Metadata:
       SamResourceId: uploadImagesFunction
+  getClubsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: getClubsFunction
+      Handler: get-clubs/index.searchClubsHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /clubs
+            Method: GET
+    Metadata:
+      SamResourceId: getClubsFunction
 Outputs:
   RegisterEndpoint:
     Description: API Gateway endpoint URL for Register function
