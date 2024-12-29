@@ -61,6 +61,32 @@ Resources:
             Method: PUT
     Metadata:
       SamResourceId: updateUserFunction
+  getUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get-user/index.getUserHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Handles fetching user data
+      CodeUri: getUserFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /profile/{user_id}
+            Method: GET
+    Metadata:
+      SamResourceId: getUserFunction
   loginUserFunction:
     Type: AWS::Serverless::Function
     Properties:
