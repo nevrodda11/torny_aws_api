@@ -47,6 +47,31 @@ Resources:
             Path: /register
             Method: POST
 
+  updateUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: update-user/index.updateProfileHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Handles user profile updates
+      CodeUri: src/handlers/
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /profile/{user_id}
+            Method: PUT
+
   loginUserFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -463,6 +488,31 @@ Resources:
           Properties:
             Path: /clubs
             Method: GET
+
+  addClubAdminFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: create-club-admin/index.addClubAdminHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64    
+      MemorySize: 128
+      Timeout: 100
+      Description: Add a club admin
+      CodeUri: src/handlers
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /add-club-admin
+            Method: POST
 
 Outputs:
   RegisterEndpoint:

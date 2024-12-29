@@ -33,7 +33,7 @@ exports.searchClubsHandler = async (event, context) => {
         
         const { name, sport, country, state, region } = event.queryStringParameters || {};
         
-        let query = `SELECT * FROM clubs WHERE 1=1`;
+        let query = `SELECT * FROM clubs_data WHERE 1=1`;
         const params = [];
 
         if (name) {

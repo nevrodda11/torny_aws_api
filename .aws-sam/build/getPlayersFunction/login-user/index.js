@@ -90,7 +90,27 @@ exports.loginUserHandler = async (event, context) => {
                         JSON_OBJECT(
                             'club', od.club,
                             'achievements', od.achievements,
-                            'images', od.images
+                            'images', od.images,
+                            'managed_clubs', (
+                                SELECT JSON_ARRAYAGG(
+                                    JSON_OBJECT(
+                                        'club_id', c.club_id,
+                                        'name', c.name,
+                                        'role', ca.role,
+                                        'permissions', 
+                                        CASE ca.role
+                                            WHEN 'owner' THEN 'full_access,manage_admins,delete_club'
+                                            WHEN 'admin' THEN 'manage_club,create_tournaments,manage_organisers'
+                                            WHEN 'organiser' THEN 'create_tournaments,manage_entries'
+                                            WHEN 'manager' THEN 'update_club,view_data'
+                                            WHEN 'viewer' THEN 'view_only'
+                                        END
+                                    )
+                                )
+                                FROM club_admins ca
+                                JOIN clubs_data c ON ca.club_id = c.club_id
+                                WHERE ca.user_id = u.id
+                            )
                         )
                 END as type_specific_data
             FROM users u

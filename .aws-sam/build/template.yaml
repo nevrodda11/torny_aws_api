@@ -35,6 +35,32 @@ Resources:
             Method: POST
     Metadata:
       SamResourceId: registerUserFunction
+  updateUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: update-user/index.updateProfileHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Handles user profile updates
+      CodeUri: updateUserFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /profile/{user_id}
+            Method: PUT
+    Metadata:
+      SamResourceId: updateUserFunction
   loginUserFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -466,6 +492,32 @@ Resources:
             Method: GET
     Metadata:
       SamResourceId: getClubsFunction
+  addClubAdminFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: create-club-admin/index.addClubAdminHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Add a club admin
+      CodeUri: addClubAdminFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /add-club-admin
+            Method: POST
+    Metadata:
+      SamResourceId: addClubAdminFunction
 Outputs:
   RegisterEndpoint:
     Description: API Gateway endpoint URL for Register function
