@@ -58,45 +58,45 @@ exports.getUserHandler = async (event, context) => {
                 [user_id]
             );
             userData = rows[0];
+            
+            // Handle achievements and images based on their type
+            userData.achievements = Array.isArray(userData.achievements) 
+                ? userData.achievements 
+                : (userData.achievements ? JSON.parse(userData.achievements) : []);
+                
+            userData.images = Array.isArray(userData.images) 
+                ? userData.images 
+                : (userData.images ? JSON.parse(userData.images) : []);
         } else {
             const [rows] = await connection.execute(
-                `SELECT u.*, o.club, o.achievements, o.images 
+                `SELECT u.*, o.club, o.achievements, o.images, 
+                        o.organiser_type, o.bank_name, o.account_name, 
+                        o.bsb, o.account_number
                  FROM users u 
                  LEFT JOIN organisers_data o ON u.id = o.user_id 
                  WHERE u.id = ?`,
                 [user_id]
             );
             userData = rows[0];
-        }
-
-        // Safely parse JSON fields
-        try {
-            if (userData.achievements && typeof userData.achievements === 'string') {
-                userData.achievements = JSON.parse(userData.achievements);
-            } else {
-                userData.achievements = [];
-            }
             
-            if (userData.images && typeof userData.images === 'string') {
-                userData.images = JSON.parse(userData.images);
-            } else {
-                userData.images = [];
-            }
-        } catch (parseError) {
-            console.error('Error parsing JSON fields:', parseError);
-            // Set default values if parsing fails
-            userData.achievements = [];
-            userData.images = [];
+            // Handle achievements and images based on their type
+            userData.achievements = Array.isArray(userData.achievements) 
+                ? userData.achievements 
+                : (userData.achievements ? JSON.parse(userData.achievements) : []);
+                
+            userData.images = Array.isArray(userData.images) 
+                ? userData.images 
+                : (userData.images ? JSON.parse(userData.images) : []);
         }
 
-        // Remove sensitive fields
+        // Remove sensitive data
         delete userData.passwordHash;
 
         return {
             statusCode: 200,
             headers: { 
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*', // For CORS
+                'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Credentials': true
             },
             body: JSON.stringify({
@@ -109,11 +109,7 @@ exports.getUserHandler = async (event, context) => {
         console.error('Error fetching user:', error);
         return {
             statusCode: 500,
-            headers: { 
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*', // For CORS
-                'Access-Control-Allow-Credentials': true
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 status: "error",
                 message: "Failed to fetch user data"

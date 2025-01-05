@@ -26,27 +26,67 @@ exports.updateProfileHandler = async (event, context) => {
     try {
         validateEnvVars();
         const { user_id } = event.pathParameters;
-        const { 
-            // Common fields (users table)
-            name, 
-            phone, 
-            address, 
-            description, 
-            avatar_url,
-            country,
-            state,
-            region,
-            
-            // Type-specific fields
-            sport,      // players only
-            club,       // both players and organisers
-            achievements, 
-            images,
-            gender      // players only
-        } = JSON.parse(event.body);
+        const body = JSON.parse(event.body);
         
+        // First upload images if they exist
+        let avatarImageUrl = null;
+        let bannerImageUrl = null;
+        
+        if (body.avatar_base64) {
+            try {
+                const avatarResponse = await fetch('https://ieg3lhlyy0.execute-api.ap-southeast-2.amazonaws.com/Prod/upload-images', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        images: [{
+                            image: body.avatar_base64,
+                            filename: `avatar-${user_id}-${Date.now()}.jpg`
+                        }]
+                    })
+                });
+                
+                const avatarData = await avatarResponse.json();
+                console.log('Avatar Upload Response:', JSON.stringify(avatarData, null, 2));
+                
+                if (avatarData.status === 'success' && avatarData.data && avatarData.data[0]) {
+                    avatarImageUrl = avatarData.data[0].variants.avatar;
+                }
+            } catch (error) {
+                console.error('Error uploading avatar:', error);
+            }
+        }
+        
+        if (body.banner_base64) {
+            try {
+                const bannerResponse = await fetch('https://ieg3lhlyy0.execute-api.ap-southeast-2.amazonaws.com/Prod/upload-images', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        images: [{
+                            image: body.banner_base64,
+                            filename: `banner-${user_id}-${Date.now()}.jpg`
+                        }]
+                    })
+                });
+                
+                const bannerData = await bannerResponse.json();
+                console.log('Banner Upload Response:', JSON.stringify(bannerData, null, 2));
+                
+                if (bannerData.status === 'success' && bannerData.data && bannerData.data[0]) {
+                    bannerImageUrl = bannerData.data[0].variants.thumbnail;
+                }
+            } catch (error) {
+                console.error('Error uploading banner:', error);
+            }
+        }
+        
+        // Now proceed with database update using the new image URLs
         connection = await mysql.createConnection(connectionConfig);
-
+        
         // First, get the user's type
         const [userRows] = await connection.execute(
             'SELECT user_type FROM users WHERE id = ?',
@@ -73,21 +113,23 @@ exports.updateProfileHandler = async (event, context) => {
                 phone = ?, 
                 address = ?, 
                 description = ?, 
-                avatar_url = ?,
+                avatar_url = COALESCE(?, avatar_url),
+                banner_url = COALESCE(?, banner_url),
                 country = ?,
                 state = ?,
                 region = ?,
                 updated = NOW() 
             WHERE id = ?`,
             [
-                name, 
-                phone || null, 
-                address || null, 
-                description || null, 
-                avatar_url || null,
-                country || null,
-                state || null,
-                region || null, 
+                body.name, 
+                body.phone || null, 
+                body.address || null, 
+                body.description || null, 
+                avatarImageUrl,  // Only update if we have a new image
+                bannerImageUrl,  // Only update if we have a new image
+                body.country || null,
+                body.state || null,
+                body.region || null, 
                 user_id
             ]
         );
@@ -103,11 +145,11 @@ exports.updateProfileHandler = async (event, context) => {
                     gender = ?
                 WHERE user_id = ?`,
                 [
-                    sport || null, 
-                    club || null, 
-                    achievements ? JSON.stringify(achievements) : null, 
-                    images ? JSON.stringify(images) : null,
-                    gender || null,
+                    body.sport || null, 
+                    body.club || null, 
+                    body.achievements ? JSON.stringify(body.achievements) : null, 
+                    body.images ? JSON.stringify(body.images) : null,
+                    body.gender || null,
                     user_id
                 ]
             );
@@ -116,12 +158,24 @@ exports.updateProfileHandler = async (event, context) => {
                 `UPDATE organisers_data SET 
                     club = ?, 
                     achievements = ?, 
-                    images = ? 
+                    images = ?,
+                    organiser_type = ?,
+                    bank_name = ?,
+                    account_name = ?,
+                    bsb = ?,
+                    account_number = ?,
+                    club_id = ?
                 WHERE user_id = ?`,
                 [
-                    club || null, 
-                    achievements ? JSON.stringify(achievements) : null, 
-                    images ? JSON.stringify(images) : null, 
+                    body.club || null, 
+                    body.achievements ? JSON.stringify(body.achievements) : null, 
+                    body.images ? JSON.stringify(body.images) : null,
+                    body.organiser_type || null,
+                    body.bank_name || null,
+                    body.account_name || null,
+                    body.bsb || null,
+                    body.account_number || null,
+                    body.club_id || null,
                     user_id
                 ]
             );
@@ -129,10 +183,18 @@ exports.updateProfileHandler = async (event, context) => {
 
         return {
             statusCode: 200,
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Credentials': true
+            },
             body: JSON.stringify({
                 status: "success",
-                message: "Profile updated successfully"
+                message: "Profile updated successfully",
+                data: {
+                    avatar_url: avatarImageUrl,
+                    banner_url: bannerImageUrl
+                }
             })
         };
 
@@ -140,7 +202,11 @@ exports.updateProfileHandler = async (event, context) => {
         console.error('Error updating profile:', error);
         return {
             statusCode: 500,
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Credentials': true
+            },
             body: JSON.stringify({
                 status: "error",
                 message: "Failed to update profile"
