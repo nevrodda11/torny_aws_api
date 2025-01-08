@@ -51,14 +51,36 @@ exports.getUserHandler = async (event, context) => {
 
         if (userType === 'player') {
             const [rows] = await connection.execute(
-                `SELECT u.*, p.sport, p.club, p.achievements, p.images, p.gender 
+                `SELECT 
+                    u.id, u.user_type, u.name as user_name, u.email, u.phone, 
+                    u.address, u.description as user_description, 
+                    u.avatar_url, u.banner_url, u.created, u.updated,
+                    u.country as user_country, u.state as user_state, u.region as user_region,
+                    p.sport, p.club, p.club_id, p.achievements, p.images, p.gender,
+                    c.name as club_name, c.description as club_description, 
+                    c.avatar, c.banner_image,
+                    c.country as club_country, c.state as club_state, c.region as club_region,
+                    c.created as club_created
                  FROM users u 
                  LEFT JOIN players_data p ON u.id = p.user_id 
+                 LEFT JOIN clubs_data c ON p.club_id = c.club_id
                  WHERE u.id = ?`,
                 [user_id]
             );
             userData = rows[0];
             
+            // Rename user fields back to their original names
+            userData.name = userData.user_name;
+            userData.description = userData.user_description;
+            userData.country = userData.user_country;
+            userData.state = userData.user_state;
+            userData.region = userData.user_region;
+            delete userData.user_name;
+            delete userData.user_description;
+            delete userData.user_country;
+            delete userData.user_state;
+            delete userData.user_region;
+
             // Handle achievements and images based on their type
             userData.achievements = Array.isArray(userData.achievements) 
                 ? userData.achievements 
@@ -67,11 +89,57 @@ exports.getUserHandler = async (event, context) => {
             userData.images = Array.isArray(userData.images) 
                 ? userData.images 
                 : (userData.images ? JSON.parse(userData.images) : []);
+
+            // Format club data into a nested object if club exists
+            if (userData.club_id) {
+                userData.club_data = {
+                    id: userData.club_id,
+                    name: userData.club_name,
+                    description: userData.club_description,
+                    avatar: userData.avatar,
+                    banner_image: userData.banner_image,
+                    country: userData.club_country,
+                    state: userData.club_state,
+                    region: userData.club_region,
+                    created: userData.club_created
+                };
+
+                // Remove the flat club fields
+                delete userData.club_id;
+                delete userData.club_name;
+                delete userData.club_description;
+                delete userData.avatar;
+                delete userData.banner_image;
+                delete userData.club_country;
+                delete userData.club_state;
+                delete userData.club_region;
+                delete userData.club_created;
+            }
         } else {
             const [rows] = await connection.execute(
-                `SELECT u.*, o.club, o.achievements, o.images, 
-                        o.organiser_type, o.bank_name, o.account_name, 
-                        o.bsb, o.account_number
+                `SELECT 
+                    u.id,
+                    u.user_type,
+                    u.name,
+                    u.email,
+                    u.phone,
+                    u.address,
+                    u.description,
+                    u.avatar_url,
+                    u.banner_url,
+                    u.created,
+                    u.updated,
+                    u.country,
+                    u.state,
+                    u.region,
+                    o.club,
+                    o.achievements,
+                    o.images,
+                    o.organiser_type,
+                    o.bank_name,
+                    o.account_name,
+                    o.bsb,
+                    o.account_number
                  FROM users u 
                  LEFT JOIN organisers_data o ON u.id = o.user_id 
                  WHERE u.id = ?`,

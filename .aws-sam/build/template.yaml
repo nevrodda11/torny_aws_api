@@ -495,6 +495,58 @@ Resources:
             Method: POST
     Metadata:
       SamResourceId: uploadImagesFunction
+  uploadGalleryImageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: upload-gallery-image/index.uploadGalleryImageHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Upload a gallery image
+      CodeUri: uploadGalleryImageFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /upload-gallery-image
+            Method: POST
+    Metadata:
+      SamResourceId: uploadGalleryImageFunction
+  getGalleryImagesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get-gallery-images/index.getGalleryImagesHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Get gallery images
+      CodeUri: getGalleryImagesFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /gallery-images
+            Method: GET
+    Metadata:
+      SamResourceId: getGalleryImagesFunction
   getClubsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -544,6 +596,58 @@ Resources:
             Method: POST
     Metadata:
       SamResourceId: addClubAdminFunction
+  createPlayerAchievementFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: create-player-achievement/index.createPlayerAchievementHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Create a player achievement
+      CodeUri: createPlayerAchievementFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /create-player-achievement
+            Method: POST
+    Metadata:
+      SamResourceId: createPlayerAchievementFunction
+  getPlayerAchievementFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get-player-achievement/index.getPlayerAchievementHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Get a player achievement
+      CodeUri: getPlayerAchievementFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /get-player-achievement/{player_id}
+            Method: GET
+    Metadata:
+      SamResourceId: getPlayerAchievementFunction
 Outputs:
   RegisterEndpoint:
     Description: API Gateway endpoint URL for Register function
