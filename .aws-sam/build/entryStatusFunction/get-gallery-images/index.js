@@ -9,11 +9,14 @@ const connectionConfig = {
     ssl: { rejectUnauthorized: false }
 };
 
+const ITEMS_PER_PAGE = 12;
+
 exports.getGalleryImagesHandler = async (event, context) => {
     let connection;
     
     try {
-        const { user_id, team_id } = event.queryStringParameters || {};
+        const { user_id, team_id, page = 1 } = event.queryStringParameters || {};
+        const currentPage = parseInt(page);
 
         // Validate that either user_id or team_id is provided
         if (!user_id && !team_id) {
@@ -33,7 +36,31 @@ exports.getGalleryImagesHandler = async (event, context) => {
         // Connect to database
         connection = await mysql.createConnection(connectionConfig);
 
-        // Build query based on provided parameters
+        // Build count query to get total number of images
+        let countQuery = `
+            SELECT COUNT(*) as total
+            FROM torny_db.images
+            WHERE 1=1
+        `;
+        
+        const whereParams = [];
+        
+        if (user_id) {
+            countQuery += ' AND user_id = ?';
+            whereParams.push(user_id.toString());
+        }
+        
+        if (team_id) {
+            countQuery += ' AND team_id = ?';
+            whereParams.push(team_id.toString());
+        }
+
+        // Get total count
+        const [countResult] = await connection.execute(countQuery, whereParams);
+        const totalItems = countResult[0].total;
+        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+
+        // Build main query with pagination
         let query = `
             SELECT 
                 image_id,
@@ -49,22 +76,27 @@ exports.getGalleryImagesHandler = async (event, context) => {
             WHERE 1=1
         `;
         
-        const params = [];
+        const mainQueryParams = [];
         
         if (user_id) {
             query += ' AND user_id = ?';
-            params.push(user_id);
+            mainQueryParams.push(user_id.toString());
         }
         
         if (team_id) {
             query += ' AND team_id = ?';
-            params.push(team_id);
+            mainQueryParams.push(team_id.toString());
         }
 
-        query += ' ORDER BY created_at DESC';
+        query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+
+        // Add pagination parameters
+        const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+        mainQueryParams.push(ITEMS_PER_PAGE.toString());
+        mainQueryParams.push(offset.toString());
 
         // Execute query
-        const [images] = await connection.execute(query, params);
+        const [images] = await connection.execute(query, mainQueryParams);
 
         return {
             statusCode: 200,
@@ -74,7 +106,17 @@ exports.getGalleryImagesHandler = async (event, context) => {
             },
             body: JSON.stringify({
                 status: 'success',
-                data: images
+                data: {
+                    images,
+                    pagination: {
+                        current_page: currentPage,
+                        total_pages: totalPages,
+                        total_items: totalItems,
+                        items_per_page: ITEMS_PER_PAGE,
+                        has_next_page: currentPage < totalPages,
+                        has_previous_page: currentPage > 1
+                    }
+                }
             })
         };
 
