@@ -542,6 +542,33 @@ Resources:
             Path: /gallery-images
             Method: GET
 
+  deleteGalleryImageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: delete-gallery-images/index.deleteGalleryImageHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Delete a gallery image
+      CodeUri: src/handlers
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+          CLOUDFLARE_ACCOUNT_ID: "a444cf6360af34f45ccfb4aaff861a86"
+          CLOUDFLARE_API_TOKEN: "hGqlnq0T2ch_0hNcki38agoUqutIfpAhJgZ41IPa"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /delete-gallery-image
+            Method: POST
+
   getClubsFunction:
     Type: AWS::Serverless::Function
     Properties:

@@ -1,5 +1,7 @@
 const mysql = require('mysql2/promise');
 
+const ITEMS_PER_PAGE = 10;
+
 const connectionConfig = {
     host: process.env.MYSQL_HOST,
     port: parseInt(process.env.MYSQL_PORT),
@@ -14,6 +16,7 @@ exports.getPlayerAchievementHandler = async (event, context) => {
     
     try {
         const player_id = event.pathParameters?.player_id;
+        const currentPage = parseInt(event.queryStringParameters?.page || '1');
 
         if (!player_id) {
             return {
@@ -32,27 +35,19 @@ exports.getPlayerAchievementHandler = async (event, context) => {
         // Connect to database
         connection = await mysql.createConnection(connectionConfig);
 
-        // Verify player exists
-        const [players] = await connection.execute(
-            'SELECT user_id FROM players_data WHERE user_id = ?',
-            [player_id]
+        // Get total count
+        const [countResult] = await connection.execute(
+            'SELECT COUNT(*) as total FROM player_achievements WHERE player_id = ?',
+            [player_id.toString()]
         );
+        
+        const totalItems = countResult[0].total;
+        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
-        if (players.length === 0) {
-            return {
-                statusCode: 404,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                },
-                body: JSON.stringify({
-                    status: 'error',
-                    message: 'Player not found'
-                })
-            };
-        }
+        // Calculate offset
+        const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
-        // Get all achievements for the player
+        // Get paginated achievements
         const [achievements] = await connection.execute(
             `SELECT 
                 achievement_id,
@@ -70,11 +65,16 @@ exports.getPlayerAchievementHandler = async (event, context) => {
                 result
             FROM player_achievements 
             WHERE player_id = ?
-            ORDER BY date_achieved DESC`,
-            [player_id]
+            ORDER BY date_achieved DESC
+            LIMIT ? OFFSET ?`,
+            [
+                player_id.toString(),
+                ITEMS_PER_PAGE.toString(),
+                offset.toString()
+            ]
         );
 
-        // Parse JSON fields if they exist and are valid JSON strings
+        // Parse JSON fields
         const formattedAchievements = achievements.map(achievement => {
             let parsedImages = [];
             if (achievement.images) {
@@ -99,7 +99,17 @@ exports.getPlayerAchievementHandler = async (event, context) => {
             },
             body: JSON.stringify({
                 status: 'success',
-                data: formattedAchievements
+                data: {
+                    achievements: formattedAchievements,
+                    pagination: {
+                        current_page: currentPage,
+                        total_pages: totalPages,
+                        total_items: totalItems,
+                        items_per_page: ITEMS_PER_PAGE,
+                        has_next_page: currentPage < totalPages,
+                        has_previous_page: currentPage > 1
+                    }
+                }
             })
         };
 
