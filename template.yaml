@@ -641,6 +641,31 @@ Resources:
             Path: /create-player-achievement
             Method: POST
 
+  deletePlayerAchievementFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: delete-player-achievement/index.deletePlayerAchievementHandler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Delete a player achievement
+      CodeUri: src/handlers
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /delete-player-achievement
+            Method: POST
+
   getPlayerAchievementFunction:
     Type: AWS::Serverless::Function
     Properties:

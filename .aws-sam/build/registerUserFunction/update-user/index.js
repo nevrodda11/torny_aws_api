@@ -113,6 +113,7 @@ exports.updateProfileHandler = async (event, context) => {
                 phone = ?, 
                 address = ?, 
                 description = ?, 
+                short_description = ?,
                 avatar_url = COALESCE(?, avatar_url),
                 banner_url = COALESCE(?, banner_url),
                 country = ?,
@@ -124,7 +125,8 @@ exports.updateProfileHandler = async (event, context) => {
                 body.name, 
                 body.phone || null, 
                 body.address || null, 
-                body.description || null, 
+                body.description || null,
+                body.short_description || null,
                 avatarImageUrl,  // Only update if we have a new image
                 bannerImageUrl,  // Only update if we have a new image
                 body.country || null,

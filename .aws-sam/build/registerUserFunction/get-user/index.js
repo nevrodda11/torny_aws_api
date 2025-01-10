@@ -54,6 +54,7 @@ exports.getUserHandler = async (event, context) => {
                 `SELECT 
                     u.id, u.user_type, u.name as user_name, u.email, u.phone, 
                     u.address, u.description as user_description, 
+                    u.short_description,
                     u.avatar_url, u.banner_url, u.created, u.updated,
                     u.country as user_country, u.state as user_state, u.region as user_region,
                     p.sport, p.club, p.club_id, p.achievements, p.images, p.gender,
@@ -125,6 +126,7 @@ exports.getUserHandler = async (event, context) => {
                     u.phone,
                     u.address,
                     u.description,
+                    u.short_description,
                     u.avatar_url,
                     u.banner_url,
                     u.created,
