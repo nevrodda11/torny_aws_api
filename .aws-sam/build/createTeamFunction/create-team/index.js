@@ -44,7 +44,10 @@ exports.createTeamHandler = async (event, context) => {
             team_gender,
             country,
             state,
-            region
+            region,
+            avatar_base64,
+            main_image_base64,
+            club
         } = JSON.parse(event.body);
 
         // Validate required fields
@@ -62,7 +65,64 @@ exports.createTeamHandler = async (event, context) => {
             };
         }
 
-        // Insert the team
+        let avatarUrl = null;
+        let mainImageUrl = null;
+
+        // Upload avatar if provided
+        if (avatar_base64) {
+            try {
+                const avatarResponse = await fetch('https://ieg3lhlyy0.execute-api.ap-southeast-2.amazonaws.com/Prod/upload-images', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        images: [{
+                            image: avatar_base64,
+                            filename: `team-avatar-${Date.now()}.jpg`
+                        }]
+                    })
+                });
+                
+                const avatarData = await avatarResponse.json();
+                console.log('Avatar Upload Response:', JSON.stringify(avatarData, null, 2));
+                
+                if (avatarData.status === 'success' && avatarData.data && avatarData.data[0]) {
+                    avatarUrl = `${avatarData.data[0].url}/avatar`;
+                }
+            } catch (error) {
+                console.error('Error uploading avatar:', error);
+            }
+        }
+
+        // Upload main image if provided
+        if (main_image_base64) {
+            try {
+                const mainImageResponse = await fetch('https://ieg3lhlyy0.execute-api.ap-southeast-2.amazonaws.com/Prod/upload-images', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        images: [{
+                            image: main_image_base64,
+                            filename: `team-main-${Date.now()}.jpg`
+                        }]
+                    })
+                });
+                
+                const mainImageData = await mainImageResponse.json();
+                console.log('Main Image Upload Response:', JSON.stringify(mainImageData, null, 2));
+                
+                if (mainImageData.status === 'success' && mainImageData.data && mainImageData.data[0]) {
+                    mainImageUrl = `${mainImageData.data[0].url}/public`;
+                }
+            } catch (error) {
+                console.error('Error uploading main image:', error);
+            }
+        }
+
+        // Insert the team with image URLs
         const [result] = await connection.execute(
             `INSERT INTO teams (
                 team_name, 
@@ -72,8 +132,11 @@ exports.createTeamHandler = async (event, context) => {
                 team_gender,
                 country,
                 state,
-                region
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                region,
+                avatar,
+                main_image,
+                club
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 team_name, 
                 sport_id, 
@@ -82,7 +145,10 @@ exports.createTeamHandler = async (event, context) => {
                 team_gender,
                 country || null,
                 state || null,
-                region || null
+                region || null,
+                avatarUrl,
+                mainImageUrl,
+                club || null
             ]
         );
 

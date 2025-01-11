@@ -290,6 +290,32 @@ Resources:
             Method: GET
     Metadata:
       SamResourceId: getTeamsFunction
+  getMyTeamsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get-my-teams/index.getMyTeamsHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Get all teams for a specific user
+      CodeUri: getMyTeamsFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /my-teams/{user_id}
+            Method: GET
+    Metadata:
+      SamResourceId: getMyTeamsFunction
   getTeamByIdFunction:
     Type: AWS::Serverless::Function
     Properties:
