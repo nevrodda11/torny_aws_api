@@ -1,7 +1,7 @@
 const mysql = require('mysql2/promise');
 
 const validateEnvVars = () => {
-    console.log('Starting environment variable validation');
+    console.log('Starting environment variable validations');
     const required = ['MYSQL_HOST', 'MYSQL_PORT', 'MYSQL_USER', 'MYSQL_PASSWORD', 'MYSQL_DATABASE'];
     const missing = required.filter(envVar => !process.env[envVar]);
     
@@ -182,6 +182,45 @@ exports.createTeamHandler = async (event, context) => {
                 await connection.query(
                     'INSERT INTO team_members (team_id, user_id, status, position, club) VALUES ?',
                     [values]
+                );
+
+                // Get creator's name
+                const [creatorResult] = await connection.execute(
+                    'SELECT name FROM users WHERE id = ?',
+                    [created_by_user_id]
+                );
+                const created_by_name = creatorResult[0]?.name || 'Someone';
+
+                // Create notifications for invited team members
+                const notificationValues = team_members
+                    .filter(member => member.user_id !== created_by_user_id)
+                    .map(member => [
+                        member.user_id,                        // user_id
+                        teamId,                               // team_id
+                        'team_invite',                        // notification_type
+                        'Team Invitation',                    // title
+                        `You have been invited to join ${created_by_name}'s ${team_type} team - ${team_name}`,  // message
+                        teamId,                               // reference_id
+                        'team',                               // reference_type
+                        `/teams/${teamId}-${team_name.toLowerCase().replace(/\s+/g, '-')}`, // link
+                        avatarUrl || null,                    // image_url - only use avatar
+                        0                                     // is_read
+                    ]);
+                
+                await connection.query(
+                    `INSERT INTO notifications (
+                        user_id,
+                        team_id,
+                        notification_type,
+                        title,
+                        message,
+                        reference_id,
+                        reference_type,
+                        link,
+                        image_url,
+                        is_read
+                    ) VALUES ?`,
+                    [notificationValues]
                 );
             }
         }

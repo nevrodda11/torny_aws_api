@@ -256,12 +256,15 @@ Resources:
           MYSQL_USER: tornymysql
           MYSQL_PASSWORD: Robots4ever1!
           MYSQL_DATABASE: torny_db
+          TORNY_API_KEY: torny
       Events:
         Api:
           Type: Api
           Properties:
             Path: /teams
             Method: POST
+            Auth:
+              ApiKeyRequired: true
     Metadata:
       SamResourceId: createTeamFunction
   getTeamsFunction:

@@ -1,1 +1,4 @@
 node_modules
+
+# Ignore the real config file with sensitive data
+template.yaml
