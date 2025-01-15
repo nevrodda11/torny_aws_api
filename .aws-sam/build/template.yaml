@@ -256,7 +256,7 @@ Resources:
           MYSQL_USER: tornymysql
           MYSQL_PASSWORD: Robots4ever1!
           MYSQL_DATABASE: torny_db
-          TORNY_API_KEY: torny
+          TORNY_API_KEY: k2DdSCyOEp9ooCuKRCJ7688BcGjkB6tY5XGmRGWU
       Events:
         Api:
           Type: Api
@@ -731,6 +731,60 @@ Resources:
             Method: GET
     Metadata:
       SamResourceId: getPlayerAchievementFunction
+  getNotificationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get-notifications/index.getNotificationsHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Get notifications
+      CodeUri: getNotificationsFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /notifications/{user_id}
+            Method: GET
+            Auth:
+              ApiKeyRequired: true
+    Metadata:
+      SamResourceId: getNotificationsFunction
+  updateNotificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: update-notification/index.updateNotificationHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Update a notification
+      CodeUri: updateNotificationFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /update-notification/{notification_id}
+            Method: PUT
+    Metadata:
+      SamResourceId: updateNotificationFunction
 Outputs:
   RegisterEndpoint:
     Description: API Gateway endpoint URL for Register function
