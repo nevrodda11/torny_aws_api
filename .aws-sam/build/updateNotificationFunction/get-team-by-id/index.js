@@ -39,14 +39,22 @@ exports.getTeamByIdHandler = async (event, context) => {
         const [team] = await connection.execute(`
             SELECT 
                 t.*,
-                GROUP_CONCAT(DISTINCT tm.user_id) as member_ids,
-                GROUP_CONCAT(DISTINCT tm.position) as member_positions,
-                GROUP_CONCAT(DISTINCT tm.club) as member_clubs,
-                GROUP_CONCAT(DISTINCT u.name) as member_names,
-                GROUP_CONCAT(DISTINCT u.avatar_url) as member_avatar_urls,
-                GROUP_CONCAT(DISTINCT u.country) as member_countries,
-                GROUP_CONCAT(DISTINCT u.state) as member_states,
-                GROUP_CONCAT(DISTINCT u.region) as member_regions,
+                GROUP_CONCAT(DISTINCT tm.user_id ORDER BY tm.position DESC) as member_ids,
+                GROUP_CONCAT(DISTINCT tm.position ORDER BY tm.position DESC) as member_positions,
+                GROUP_CONCAT(DISTINCT tm.club ORDER BY tm.position DESC) as member_clubs,
+                GROUP_CONCAT(DISTINCT tm.status ORDER BY tm.position DESC) as member_statuses,
+                GROUP_CONCAT(DISTINCT u.name ORDER BY tm.position DESC) as member_names,
+                GROUP_CONCAT(DISTINCT u.avatar_url ORDER BY tm.position DESC) as member_avatar_urls,
+                GROUP_CONCAT(DISTINCT u.country ORDER BY tm.position DESC) as member_countries,
+                GROUP_CONCAT(DISTINCT u.state ORDER BY tm.position DESC) as member_states,
+                GROUP_CONCAT(DISTINCT u.region ORDER BY tm.position DESC) as member_regions,
+                -- Club details
+                c.name as club_name,
+                c.avatar as club_avatar_url,
+                c.country as club_country,
+                c.state as club_state,
+                c.region as club_region,
+                c.description as club_description,
                 -- Manager details
                 manager.name as manager_name,
                 manager.avatar_url as manager_avatar_url,
@@ -60,8 +68,10 @@ exports.getTeamByIdHandler = async (event, context) => {
             LEFT JOIN users u ON tm.user_id = u.id
             LEFT JOIN users manager ON t.created_by_user_id = manager.id
             LEFT JOIN players_data pd ON manager.id = pd.user_id
+            LEFT JOIN clubs_data c ON t.club = c.club_id
             WHERE t.team_id = ?
-            GROUP BY t.team_id, manager.name, manager.avatar_url, manager.country, manager.state, manager.region, pd.gender, manager.description
+            GROUP BY t.team_id, manager.name, manager.avatar_url, manager.country, manager.state, manager.region, pd.gender, manager.description,
+                     c.name, c.avatar, c.country, c.state, c.region, c.description
         `, [teamId]);
 
         if (team.length === 0) {
@@ -86,6 +96,7 @@ exports.getTeamByIdHandler = async (event, context) => {
                     user_id: parseInt(id),
                     position: team[0].member_positions?.split(',')[index] || null,
                     club: team[0].member_clubs?.split(',')[index] || null,
+                    status: team[0].member_statuses?.split(',')[index] || null,
                     name: team[0].member_names?.split(',')[index] || null,
                     avatar_url: team[0].member_avatar_urls?.split(',')[index] || null,
                     country: team[0].member_countries?.split(',')[index] || null,
@@ -100,13 +111,22 @@ exports.getTeamByIdHandler = async (event, context) => {
                     region: team[0].manager_region || null,
                     gender: team[0].manager_gender || null,
                     description: team[0].manager_description || null
-                }
+                },
+                club_details: team[0].club_name ? {
+                    name: team[0].club_name,
+                    avatar_url: team[0].club_avatar_url,
+                    country: team[0].club_country,
+                    state: team[0].club_state,
+                    region: team[0].club_region,
+                    description: team[0].club_description
+                } : null
             };
 
             // Clean up the response by removing the raw concatenated fields
             delete processedTeam.member_ids;
             delete processedTeam.member_positions;
             delete processedTeam.member_clubs;
+            delete processedTeam.member_statuses;
             delete processedTeam.member_names;
             delete processedTeam.member_avatar_urls;
             delete processedTeam.member_countries;
@@ -119,6 +139,12 @@ exports.getTeamByIdHandler = async (event, context) => {
             delete processedTeam.manager_region;
             delete processedTeam.manager_gender;
             delete processedTeam.manager_description;
+            delete processedTeam.club_name;
+            delete processedTeam.club_avatar_url;
+            delete processedTeam.club_country;
+            delete processedTeam.club_state;
+            delete processedTeam.club_region;
+            delete processedTeam.club_description;
 
             return {
                 statusCode: 200,
