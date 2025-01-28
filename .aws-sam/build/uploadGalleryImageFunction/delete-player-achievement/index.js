@@ -13,11 +13,12 @@ exports.deletePlayerAchievementHandler = async (event, context) => {
     let connection;
     
     try {
-        const { achievement_id, user_id } = JSON.parse(event.body);
+        const { achievement_id, user_id, entity_type = 'player' } = JSON.parse(event.body);
         console.log('Attempting to delete achievement with ID:', achievement_id);
         console.log('Request made by user:', user_id);
+        console.log('Entity type:', entity_type);
 
-        if (!achievement_id || !user_id) {
+        if (!achievement_id || !user_id || !entity_type) {
             console.log('Missing required fields');
             return {
                 statusCode: 400,
@@ -27,7 +28,7 @@ exports.deletePlayerAchievementHandler = async (event, context) => {
                 },
                 body: JSON.stringify({
                     status: 'error',
-                    message: 'achievement_id and user_id are required'
+                    message: 'achievement_id, user_id, and entity_type are required'
                 })
             };
         }
@@ -38,7 +39,7 @@ exports.deletePlayerAchievementHandler = async (event, context) => {
 
         // First, get the achievement details to check ownership
         const [achievementDetails] = await connection.execute(
-            'SELECT player_id FROM torny_db.player_achievements WHERE achievement_id = ?',
+            'SELECT entity_id, entity_type FROM achievements WHERE achievement_id = ?',
             [achievement_id.toString()]
         );
 
@@ -59,12 +60,29 @@ exports.deletePlayerAchievementHandler = async (event, context) => {
 
         // Add debug logging
         console.log('Achievement details:', achievementDetails[0]);
-        console.log('Achievement player_id:', achievementDetails[0].player_id);
+        console.log('Achievement entity_id:', achievementDetails[0].entity_id);
+        console.log('Achievement entity_type:', achievementDetails[0].entity_type);
         console.log('Request user_id:', user_id);
-        console.log('Types - player_id:', typeof achievementDetails[0].player_id, 'user_id:', typeof user_id);
+        console.log('Request entity_type:', entity_type);
+
+        // Check if entity type matches
+        if (achievementDetails[0].entity_type !== entity_type) {
+            console.log('Entity type mismatch');
+            return {
+                statusCode: 400,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                body: JSON.stringify({
+                    status: 'error',
+                    message: 'Invalid entity type for this achievement'
+                })
+            };
+        }
 
         // Check if user owns the achievement - convert both to strings for comparison
-        if (achievementDetails[0].player_id.toString() !== user_id.toString()) {
+        if (achievementDetails[0].entity_id.toString() !== user_id.toString()) {
             console.log('User not authorized to delete this achievement');
             return {
                 statusCode: 403,
@@ -82,7 +100,7 @@ exports.deletePlayerAchievementHandler = async (event, context) => {
         // Delete the achievement
         console.log('Deleting achievement from database...');
         const [deleteResult] = await connection.execute(
-            'DELETE FROM torny_db.player_achievements WHERE achievement_id = ?',
+            'DELETE FROM achievements WHERE achievement_id = ?',
             [achievement_id.toString()]
         );
 

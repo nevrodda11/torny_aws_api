@@ -1,4 +1,5 @@
 const mysql = require('mysql2/promise');
+const fetch = require('node-fetch');
 
 const connectionConfig = {
     host: process.env.MYSQL_HOST,
@@ -15,7 +16,8 @@ exports.createPlayerAchievementHandler = async (event, context) => {
     try {
         const body = JSON.parse(event.body);
         const { 
-            player_id,
+            entity_id,
+            entity_type,
             title,
             description,
             date_achieved,
@@ -26,11 +28,11 @@ exports.createPlayerAchievementHandler = async (event, context) => {
             city,
             state,
             country,
-            result
+            result: achievementResult
         } = body;
 
         // Validate required fields
-        if (!player_id || !title || !date_achieved) {
+        if (!entity_id || !title || !date_achieved || !entity_type) {
             return {
                 statusCode: 400,
                 headers: {
@@ -39,7 +41,7 @@ exports.createPlayerAchievementHandler = async (event, context) => {
                 },
                 body: JSON.stringify({
                     status: 'error',
-                    message: 'Missing required fields: player_id, title, and date_achieved are required'
+                    message: 'Missing required fields: entity_id, entity_type, title, and date_achieved are required'
                 })
             };
         }
@@ -47,13 +49,35 @@ exports.createPlayerAchievementHandler = async (event, context) => {
         // Connect to database
         connection = await mysql.createConnection(connectionConfig);
 
-        // Verify player exists
-        const [players] = await connection.execute(
-            'SELECT user_id FROM players_data WHERE user_id = ?',
-            [player_id]
-        );
+        // Verify entity exists based on type
+        let entityCheckQuery;
+        if (entity_type === 'player') {
+            entityCheckQuery = 'SELECT user_id FROM players_data WHERE user_id = ?';
+        } else if (entity_type === 'club') {
+            entityCheckQuery = 'SELECT club_id FROM clubs WHERE club_id = ?';
+        } else if (entity_type === 'team') {
+            entityCheckQuery = 'SELECT team_id FROM teams WHERE team_id = ?';
+        } else if (entity_type === 'organiser') {
+            entityCheckQuery = 'SELECT organiser_id FROM organisers WHERE organiser_id = ?';
+        } else if (entity_type === 'association') {
+            entityCheckQuery = 'SELECT association_id FROM associations WHERE association_id = ?';
+        } else {
+            return {
+                statusCode: 400,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                body: JSON.stringify({
+                    status: 'error',
+                    message: 'Invalid entity_type'
+                })
+            };
+        }
 
-        if (players.length === 0) {
+        const [entities] = await connection.execute(entityCheckQuery, [entity_id]);
+
+        if (entities.length === 0) {
             return {
                 statusCode: 404,
                 headers: {
@@ -62,42 +86,105 @@ exports.createPlayerAchievementHandler = async (event, context) => {
                 },
                 body: JSON.stringify({
                     status: 'error',
-                    message: 'Player not found'
+                    message: `${entity_type} not found`
                 })
             };
         }
 
-        // Insert achievement
-        const [result_data] = await connection.execute(
-            `INSERT INTO player_achievements (
-                player_id,
+        // Insert achievement first to get the ID
+        const [result] = await connection.execute(
+            `INSERT INTO achievements (
+                entity_id,
+                entity_type,
                 title,
                 description,
                 date_achieved,
                 type,
                 gender,
                 award_level,
-                images,
                 city,
                 state,
                 country,
                 result
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                player_id,
+                entity_id,
+                entity_type,
                 title,
                 description || null,
                 date_achieved,
                 type || null,
                 gender || null,
                 award_level || null,
-                images ? JSON.stringify(images) : null,
                 city || null,
                 state || null,
                 country || null,
-                result || null
+                achievementResult || null
             ]
         );
+
+        const achievement_id = result.insertId;
+        const uploadedImages = [];
+
+        // Upload images if provided
+        if (images && images.length > 0) {
+            for (const imageData of images) {
+                try {
+                    // Upload to Cloudflare
+                    const uploadResponse = await fetch('https://ieg3lhlyy0.execute-api.ap-southeast-2.amazonaws.com/Prod/upload-images', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            images: [{
+                                image: imageData.image_base64,
+                                filename: `achievement-${achievement_id}-${Date.now()}.jpg`
+                            }]
+                        })
+                    });
+
+                    const uploadData = await uploadResponse.json();
+                    
+                    if (uploadData.status === 'success' && uploadData.data && uploadData.data[0]) {
+                        const baseUrl = uploadData.data[0].url;
+                        const publicUrl = `${baseUrl}/public`;
+                        const avatarUrl = `${baseUrl}/avatar`;
+                        const thumbnailUrl = `${baseUrl}/thumbnail`;
+
+                        // Insert image record
+                        const [imageResult] = await connection.execute(
+                            `INSERT INTO torny_db.images (
+                                achievement_id,
+                                ${entity_type === 'player' ? 'user_id' : 'team_id'},
+                                cloudflare_image_id,
+                                public_url,
+                                avatar_url,
+                                thumbnail_url
+                            ) VALUES (?, ?, ?, ?, ?, ?)`,
+                            [
+                                achievement_id,
+                                entity_id,
+                                uploadData.data[0].id,
+                                publicUrl,
+                                avatarUrl,
+                                thumbnailUrl
+                            ]
+                        );
+
+                        uploadedImages.push({
+                            image_id: imageResult.insertId,
+                            cloudflare_image_id: uploadData.data[0].id,
+                            public_url: publicUrl,
+                            avatar_url: avatarUrl,
+                            thumbnail_url: thumbnailUrl
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error uploading image:', error);
+                }
+            }
+        }
 
         return {
             statusCode: 201,
@@ -108,25 +195,26 @@ exports.createPlayerAchievementHandler = async (event, context) => {
             body: JSON.stringify({
                 status: 'success',
                 data: {
-                    achievement_id: result_data.insertId,
-                    player_id,
+                    achievement_id,
+                    entity_id,
+                    entity_type,
                     title,
                     description,
                     date_achieved,
                     type,
                     gender,
                     award_level,
-                    images,
+                    images: uploadedImages,
                     city,
                     state,
                     country,
-                    result
+                    result: achievementResult
                 }
             })
         };
 
     } catch (error) {
-        console.error('Error creating player achievement:', error);
+        console.error('Error creating achievement:', error);
         return {
             statusCode: 500,
             headers: {

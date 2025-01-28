@@ -14,6 +14,16 @@ exports.getMyTeamsHandler = async (event, context) => {
     
     try {
         const { user_id } = event.pathParameters;
+        const { 
+            team_name, 
+            team_status, 
+            team_type, 
+            team_gender, 
+            sport_id,
+            member_status,
+            page = '1',
+            limit = '10'
+        } = event.queryStringParameters || {};
         console.log('Getting teams for user:', user_id);
 
         if (!user_id) {
@@ -33,9 +43,70 @@ exports.getMyTeamsHandler = async (event, context) => {
         // Connect to database
         connection = await mysql.createConnection(connectionConfig);
 
-        // Get teams where user is a member
-        const [teams] = await connection.execute(
-            `SELECT 
+        // Build the WHERE clause based on search parameters
+        const whereConditions = ['tm.user_id = ?'];
+        const queryParams = [user_id.toString()];
+
+        // Add member status filter if provided, otherwise show all statuses
+        if (member_status) {
+            whereConditions.push('tm.status = ?');
+            queryParams.push(member_status);
+        } else {
+            whereConditions.push('tm.status IN ("approved", "pending", "declined")');
+        }
+
+        if (team_name) {
+            whereConditions.push('t.team_name LIKE ?');
+            queryParams.push(`%${team_name}%`);
+        }
+
+        if (team_status) {
+            whereConditions.push('t.team_status = ?');
+            queryParams.push(team_status);
+        }
+
+        if (team_type) {
+            whereConditions.push('t.team_type = ?');
+            queryParams.push(team_type);
+        }
+
+        if (team_gender) {
+            whereConditions.push('t.team_gender = ?');
+            queryParams.push(team_gender);
+        }
+
+        if (sport_id) {
+            whereConditions.push('t.sport_id = ?');
+            queryParams.push(sport_id);
+        }
+
+        // Pagination
+        const currentPage = parseInt(page);
+        const itemsPerPage = parseInt(limit);
+        const offset = (currentPage - 1) * itemsPerPage;
+
+        // Add pagination parameters to a new array to keep original queryParams intact
+        const queryParamsWithPagination = [...queryParams, itemsPerPage, offset];
+
+        // Debug log
+        console.log('Where conditions:', whereConditions);
+        console.log('Query params:', queryParams);
+        console.log('Query params with pagination:', queryParamsWithPagination);
+
+        // Get teams where user is a member with count
+        const [countResult] = await connection.execute(`
+            SELECT COUNT(DISTINCT t.team_id) as total
+            FROM torny_db.teams t
+            INNER JOIN torny_db.team_members tm ON t.team_id = tm.team_id
+            LEFT JOIN torny_db.team_members other_tm ON t.team_id = other_tm.team_id
+            LEFT JOIN torny_db.users u ON other_tm.user_id = u.id
+            LEFT JOIN torny_db.sports s ON t.sport_id = s.sport_id
+            WHERE ${whereConditions.join(' AND ')}
+        `, queryParams);
+
+        // Use query() instead of execute() for the paginated query
+        const [teams] = await connection.query(`
+            SELECT 
                 t.team_id,
                 t.team_name,
                 t.sport_id,
@@ -72,10 +143,11 @@ exports.getMyTeamsHandler = async (event, context) => {
                     )
                 ) as team_members
             FROM torny_db.teams t
-            INNER JOIN torny_db.team_members tm ON t.team_id = tm.team_id AND tm.user_id = ?
+            INNER JOIN torny_db.team_members tm ON t.team_id = tm.team_id
             LEFT JOIN torny_db.team_members other_tm ON t.team_id = other_tm.team_id
             LEFT JOIN torny_db.users u ON other_tm.user_id = u.id
             LEFT JOIN torny_db.sports s ON t.sport_id = s.sport_id
+            WHERE ${whereConditions.join(' AND ')}
             GROUP BY 
                 t.team_id,
                 t.team_name,
@@ -100,9 +172,13 @@ exports.getMyTeamsHandler = async (event, context) => {
                 tm.status,
                 tm.position,
                 tm.club
-            ORDER BY t.created_at DESC`,
-            [user_id.toString()]
+            ORDER BY t.created_at DESC
+            LIMIT ?, ?`,
+            [...queryParams, offset, itemsPerPage]
         );
+
+        const totalItems = countResult[0].total;
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
 
         return {
             statusCode: 200,
@@ -112,7 +188,13 @@ exports.getMyTeamsHandler = async (event, context) => {
             },
             body: JSON.stringify({
                 status: 'success',
-                data: teams
+                data: teams,
+                pagination: {
+                    current_page: currentPage,
+                    items_per_page: itemsPerPage,
+                    total_items: totalItems,
+                    total_pages: totalPages
+                }
             })
         };
 

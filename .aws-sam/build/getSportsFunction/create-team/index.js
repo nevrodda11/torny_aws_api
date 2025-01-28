@@ -155,25 +155,26 @@ exports.createTeamHandler = async (event, context) => {
         const teamId = result.insertId;
 
         // Add the creator as an approved team member with position and club
+        const creatorMember = team_members.find(m => m.user_id === created_by_user_id) || {};
         await connection.execute(
             'INSERT INTO team_members (team_id, user_id, status, position, club) VALUES (?, ?, ?, ?, ?)',
             [
                 teamId, 
                 created_by_user_id, 
-                'approved', 
-                team_members.find(m => m.user_id === created_by_user_id)?.position || null,
-                team_members.find(m => m.user_id === created_by_user_id)?.club || null
+                'approved',  // Always set status as approved for creator
+                creatorMember.position || null,
+                creatorMember.club || null
             ]
         );
 
         // Add additional team members with pending status, position and club
         if (team_members.length > 0) {
             const values = team_members
-                .filter(member => member.user_id !== created_by_user_id)
+                .filter(member => member.user_id !== created_by_user_id)  // Filter out creator
                 .map(member => [
                     teamId, 
                     member.user_id, 
-                    'pending', 
+                    'pending',  // All other members start as pending
                     member.position || null,
                     member.club || null
                 ]);

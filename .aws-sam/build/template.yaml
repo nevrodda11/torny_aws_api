@@ -345,6 +345,32 @@ Resources:
             Method: GET
     Metadata:
       SamResourceId: getTeamByIdFunction
+  updatePlayerStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: update-player-status/index.updatePlayerStatusHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Update the status of a player
+      CodeUri: updatePlayerStatusFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /update-player-status
+            Method: POST
+    Metadata:
+      SamResourceId: updatePlayerStatusFunction
   getPlayersFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -727,7 +753,7 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /get-player-achievement/{player_id}
+            Path: /get-player-achievement/{entity_id}
             Method: GET
     Metadata:
       SamResourceId: getPlayerAchievementFunction

@@ -15,10 +15,11 @@ exports.getPlayerAchievementHandler = async (event, context) => {
     let connection;
     
     try {
-        const player_id = event.pathParameters?.player_id;
+        const entity_id = event.pathParameters?.entity_id;
+        const entity_type = event.queryStringParameters?.entity_type || 'player';
         const currentPage = parseInt(event.queryStringParameters?.page || '1');
 
-        if (!player_id) {
+        if (!entity_id) {
             return {
                 statusCode: 400,
                 headers: {
@@ -27,7 +28,7 @@ exports.getPlayerAchievementHandler = async (event, context) => {
                 },
                 body: JSON.stringify({
                     status: 'error',
-                    message: 'Player ID is required'
+                    message: 'Entity ID is required'
                 })
             };
         }
@@ -37,57 +38,76 @@ exports.getPlayerAchievementHandler = async (event, context) => {
 
         // Get total count
         const [countResult] = await connection.execute(
-            'SELECT COUNT(*) as total FROM player_achievements WHERE player_id = ?',
-            [player_id.toString()]
+            'SELECT COUNT(*) as total FROM achievements WHERE entity_id = ? AND entity_type = ?',
+            [entity_id.toString(), entity_type]
         );
         
         const totalItems = countResult[0].total;
         const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
-
-        // Calculate offset
         const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
-        // Get paginated achievements
+        // Get paginated achievements with their images
         const [achievements] = await connection.execute(
             `SELECT 
-                achievement_id,
-                player_id,
-                title,
-                description,
-                date_achieved,
-                type,
-                gender,
-                award_level,
-                images,
-                city,
-                state,
-                country,
-                result
-            FROM player_achievements 
-            WHERE player_id = ?
-            ORDER BY date_achieved DESC
+                a.achievement_id,
+                a.entity_id,
+                a.entity_type,
+                a.title,
+                a.description,
+                a.date_achieved,
+                a.type,
+                a.gender,
+                a.award_level,
+                a.city,
+                a.state,
+                a.country,
+                a.result,
+                COALESCE(
+                    JSON_ARRAYAGG(
+                        CASE 
+                            WHEN i.image_id IS NOT NULL THEN
+                                JSON_OBJECT(
+                                    'image_id', i.image_id,
+                                    'cloudflare_image_id', i.cloudflare_image_id,
+                                    'public_url', i.public_url,
+                                    'avatar_url', i.avatar_url,
+                                    'thumbnail_url', i.thumbnail_url
+                                )
+                            ELSE NULL
+                        END
+                    ),
+                    JSON_ARRAY()
+                ) as images
+            FROM achievements a
+            LEFT JOIN images i ON a.achievement_id = i.achievement_id
+            WHERE a.entity_id = ? AND a.entity_type = ?
+            GROUP BY a.achievement_id
+            ORDER BY a.date_achieved DESC
             LIMIT ? OFFSET ?`,
             [
-                player_id.toString(),
+                entity_id.toString(),
+                entity_type,
                 ITEMS_PER_PAGE.toString(),
                 offset.toString()
             ]
         );
 
-        // Parse JSON fields
+        // Add console.log to see what we're getting
+        console.log('Raw query results:', JSON.stringify(achievements, null, 2));
+
+        // Format the achievements
         const formattedAchievements = achievements.map(achievement => {
-            let parsedImages = [];
+            let images = [];
             if (achievement.images) {
-                try {
-                    parsedImages = JSON.parse(achievement.images);
-                } catch (e) {
-                    console.warn('Failed to parse images JSON for achievement:', achievement.achievement_id);
-                }
+                // Filter out null values from the array
+                images = achievement.images.filter(img => img !== null);
             }
             
+            // Remove the raw images and add the filtered array
+            const { images: rawImages, ...achievementData } = achievement;
             return {
-                ...achievement,
-                images: parsedImages
+                ...achievementData,
+                images
             };
         });
 
@@ -114,7 +134,7 @@ exports.getPlayerAchievementHandler = async (event, context) => {
         };
 
     } catch (error) {
-        console.error('Error fetching player achievements:', error);
+        console.error('Error fetching achievements:', error);
         return {
             statusCode: 500,
             headers: {
