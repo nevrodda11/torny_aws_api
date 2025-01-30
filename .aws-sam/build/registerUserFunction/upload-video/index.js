@@ -150,12 +150,26 @@ exports.uploadVideoHandler = async (event, context) => {
                             }
                         }).then(res => res.json());
 
-                        // Store in database
+                        console.log('Video metadata from Cloudflare:', {
+                            status: videoData.result.status,
+                            playback: videoData.result.playback,
+                            thumbnail: videoData.result.thumbnail,
+                            duration: videoData.result.duration,
+                            dimensions: {
+                                width: videoData.result.input.width,
+                                height: videoData.result.input.height
+                            }
+                        });
+
+                        // Store in database with SSL
                         connection = await mysql.createConnection({
                             host: process.env.DB_HOST,
                             user: process.env.DB_USER,
                             password: process.env.DB_PASSWORD,
-                            database: process.env.DB_NAME
+                            database: process.env.DB_NAME,
+                            ssl: {
+                                rejectUnauthorized: true
+                            }
                         });
 
                         let ownerColumn;
@@ -166,6 +180,11 @@ exports.uploadVideoHandler = async (event, context) => {
                             case 'club': ownerColumn = 'club_id'; break;
                             default: throw new Error('Invalid entity_type');
                         }
+
+                        // Map Cloudflare status to our database status
+                        let dbStatus = 'pending';
+                        if (videoData.result.status.state === 'ready') dbStatus = 'ready';
+                        else if (videoData.result.status.state === 'error') dbStatus = 'error';
 
                         const [result] = await connection.execute(
                             `INSERT INTO torny_db.videos (
@@ -190,11 +209,11 @@ exports.uploadVideoHandler = async (event, context) => {
                                 caption || null,
                                 videoData.result.playback.hls,
                                 videoData.result.thumbnail,
-                                videoData.result.duration || null,
-                                videoData.result.input.width || null,
-                                videoData.result.input.height || null,
-                                videoData.result.status,
-                                videoData.result.status === 'ready' ? 'ready' : 'processing'
+                                videoData.result.duration > 0 ? videoData.result.duration : null,
+                                videoData.result.input.width > 0 ? videoData.result.input.width : null,
+                                videoData.result.input.height > 0 ? videoData.result.input.height : null,
+                                dbStatus,
+                                videoData.result.status.state || 'processing'
                             ]
                         );
 
@@ -206,11 +225,13 @@ exports.uploadVideoHandler = async (event, context) => {
                             },
                             body: JSON.stringify({
                                 status: 'success',
-                                video_id: result.insertId
+                                video_id: result.insertId,
+                                cloudflare_id: videoId,
+                                playback_url: videoData.result.playback.hls
                             })
                         };
                     } catch (error) {
-                        console.error('Error uploading chunk to Cloudflare:', error);
+                        console.error('Database connection error:', error);
                         throw error;
                     }
                 }
@@ -295,6 +316,11 @@ exports.uploadVideoHandler = async (event, context) => {
                         default: throw new Error('Invalid entity_type');
                     }
 
+                    // Map Cloudflare status to our database status
+                    let dbStatus = 'pending';
+                    if (videoData.result.status.state === 'ready') dbStatus = 'ready';
+                    else if (videoData.result.status.state === 'error') dbStatus = 'error';
+
                     const [result] = await connection.execute(
                         `INSERT INTO torny_db.videos (
                             ${ownerColumn},
@@ -318,11 +344,11 @@ exports.uploadVideoHandler = async (event, context) => {
                             caption || null,
                             videoData.result.playback.hls,
                             videoData.result.thumbnail,
-                            videoData.result.duration || null,
-                            videoData.result.input.width || null,
-                            videoData.result.input.height || null,
-                            videoData.result.status,
-                            videoData.result.status === 'ready' ? 'ready' : 'processing'
+                            videoData.result.duration > 0 ? videoData.result.duration : null,
+                            videoData.result.input.width > 0 ? videoData.result.input.width : null,
+                            videoData.result.input.height > 0 ? videoData.result.input.height : null,
+                            dbStatus,
+                            videoData.result.status.state || 'processing'
                         ]
                     );
 

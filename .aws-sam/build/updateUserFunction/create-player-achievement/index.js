@@ -28,7 +28,8 @@ exports.createPlayerAchievementHandler = async (event, context) => {
             city,
             state,
             country,
-            result: achievementResult
+            result: achievementResult,
+            videos
         } = body;
 
         // Validate required fields
@@ -124,6 +125,24 @@ exports.createPlayerAchievementHandler = async (event, context) => {
         );
 
         const achievement_id = result.insertId;
+
+        // Update videos with achievement_id
+        if (videos && videos.length > 0) {
+            console.log('Updating videos with achievement_id:', {
+                achievement_id,
+                video_ids: videos.map(v => v.video_id)
+            });
+
+            for (const video of videos) {
+                await connection.execute(
+                    `UPDATE torny_db.videos 
+                     SET achievement_id = ? 
+                     WHERE id = ?`,
+                    [achievement_id, video.video_id]
+                );
+            }
+        }
+
         const uploadedImages = [];
 
         // Upload images if provided
@@ -205,6 +224,7 @@ exports.createPlayerAchievementHandler = async (event, context) => {
                     gender,
                     award_level,
                     images: uploadedImages,
+                    videos: videos,
                     city,
                     state,
                     country,
