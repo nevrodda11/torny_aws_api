@@ -97,6 +97,42 @@ exports.deletePlayerAchievementHandler = async (event, context) => {
             };
         }
 
+        // Get associated images first
+        const [images] = await connection.execute(
+            'SELECT cloudflare_image_id FROM images WHERE achievement_id = ?',
+            [achievement_id.toString()]
+        );
+
+        // Delete associated images from Cloudflare
+        if (images.length > 0) {
+            for (const image of images) {
+                try {
+                    // Delete from Cloudflare
+                    const deleteResponse = await fetch('https://ieg3lhlyy0.execute-api.ap-southeast-2.amazonaws.com/Prod/delete-images', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            image_ids: [image.cloudflare_image_id]
+                        })
+                    });
+
+                    if (!deleteResponse.ok) {
+                        console.error('Failed to delete image from Cloudflare:', image.cloudflare_image_id);
+                    }
+                } catch (error) {
+                    console.error('Error deleting image from Cloudflare:', error);
+                }
+            }
+        }
+
+        // Delete image records from database
+        await connection.execute(
+            'DELETE FROM images WHERE achievement_id = ?',
+            [achievement_id.toString()]
+        );
+
         // Delete the achievement
         console.log('Deleting achievement from database...');
         const [deleteResult] = await connection.execute(

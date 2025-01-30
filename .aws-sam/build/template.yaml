@@ -630,6 +630,34 @@ Resources:
             Method: POST
     Metadata:
       SamResourceId: deleteGalleryImageFunction
+  uploadVideoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: upload-video/index.uploadVideoHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Upload a video
+      CodeUri: uploadVideoFunction
+      Environment:
+        Variables:
+          CLOUDFLARE_ACCOUNT_ID: a444cf6360af34f45ccfb4aaff861a86
+          CLOUDFLARE_STREAM_TOKEN: T21HgNWd_7I70UFgxQVx7gw9F_Hs6dFGYme_4Nh7
+          DB_HOST: tornymysql.mysql.database.azure.com
+          DB_PORT: 3306
+          DB_USER: tornymysql
+          DB_PASSWORD: Robots4ever1!
+          DB_NAME: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /upload-video
+            Method: POST
+    Metadata:
+      SamResourceId: uploadVideoFunction
   getClubsFunction:
     Type: AWS::Serverless::Function
     Properties:
