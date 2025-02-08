@@ -63,20 +63,34 @@ exports.getTournamentByIdHandler = async (event, context) => {
                     'description', u.description,
                     'avatar_url', u.avatar_url,
                     'user_type', u.user_type,
-                    'profile_data', 
+                    'organiser_type', od.organiser_type,
+                    'club_data',
                     CASE 
+                        WHEN u.user_type = 'organiser' THEN 
+                            (
+                                SELECT JSON_OBJECT(
+                                    'id', cd.club_id,
+                                    'sport', cd.sport,
+                                    'name', cd.name,
+                                    'description', cd.description,
+                                    'achievements', cd.achievements,
+                                    'avatar', cd.avatar,
+                                    'banner_image', cd.banner_image,
+                                    'country', cd.country,
+                                    'state', cd.state,
+                                    'region', cd.region
+                                )
+                                FROM torny_db.organisers_data od2
+                                LEFT JOIN torny_db.clubs_data cd ON od2.club_id = cd.club_id
+                                WHERE od2.user_id = t.created_by_user_id
+                                LIMIT 1
+                            )
                         WHEN u.user_type = 'player' THEN 
                             JSON_OBJECT(
                                 'sport', pd.sport,
                                 'club', pd.club,
                                 'achievements', pd.achievements,
                                 'images', pd.images
-                            )
-                        WHEN u.user_type = 'organiser' THEN 
-                            JSON_OBJECT(
-                                'club', od.club,
-                                'achievements', od.achievements,
-                                'images', od.images
                             )
                     END
                 ) as organizer_details

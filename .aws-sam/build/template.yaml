@@ -785,6 +785,58 @@ Resources:
             Method: GET
     Metadata:
       SamResourceId: getPlayerAchievementFunction
+  createCommentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: create-comment/index.createCommentHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Create a comment
+      CodeUri: createCommentFunction
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /create-comment
+            Method: POST
+    Metadata:
+      SamResourceId: createCommentFunction
+  getCommentsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: getCommentsFunction
+      Handler: get-comment/index.getCommentsHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Get comments
+      Environment:
+        Variables:
+          MYSQL_HOST: tornymysql.mysql.database.azure.com
+          MYSQL_PORT: 3306
+          MYSQL_USER: tornymysql
+          MYSQL_PASSWORD: Robots4ever1!
+          MYSQL_DATABASE: torny_db
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /comments
+            Method: GET
+    Metadata:
+      SamResourceId: getCommentsFunction
   getNotificationsFunction:
     Type: AWS::Serverless::Function
     Properties:

@@ -46,7 +46,7 @@ exports.getPlayerAchievementHandler = async (event, context) => {
         const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
         const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
-        // Get paginated achievements with their images
+        // Get paginated achievements with their images and videos
         const [achievements] = await connection.execute(
             `SELECT 
                 a.achievement_id,
@@ -77,7 +77,25 @@ exports.getPlayerAchievementHandler = async (event, context) => {
                         END
                     ),
                     JSON_ARRAY()
-                ) as images
+                ) as images,
+                COALESCE(
+                    (
+                        SELECT JSON_ARRAYAGG(
+                            JSON_OBJECT(
+                                'id', v.id,
+                                'cloudflare_video_id', v.cloudflare_video_id,
+                                'title', v.title,
+                                'caption', v.caption,
+                                'playback_url', v.playback_url,
+                                'thumbnail_url', v.thumbnail_url,
+                                'status', v.status
+                            )
+                        )
+                        FROM torny_db.videos v
+                        WHERE v.achievement_id = a.achievement_id
+                    ),
+                    JSON_ARRAY()
+                ) as videos
             FROM achievements a
             LEFT JOIN images i ON a.achievement_id = i.achievement_id
             WHERE a.entity_id = ? AND a.entity_type = ?
